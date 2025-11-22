@@ -45,7 +45,7 @@ class NPCManager:
     
     def get_npcs_by_location(self, location_id: str) -> List[Dict[str, Any]]:
         """
-        獲取某地點的所有 NPC
+        獲取某地點的所有 NPC（只使用 location_id）
 
         Args:
             location_id: 地點 ID（如 "qingyun_foot"）
@@ -53,10 +53,9 @@ class NPCManager:
         Returns:
             該地點的所有 NPC 列表
         """
-        # 支援舊格式 location 和新格式 location_id
         return [
             npc for npc in self.npcs.values()
-            if npc.get('location') == location_id or npc.get('location_id') == location_id
+            if npc.get('location_id') == location_id
         ]
     
     def get_all_npcs(self) -> List[Dict[str, Any]]:
@@ -64,12 +63,15 @@ class NPCManager:
         return list(self.npcs.values())
     
     def format_npc_info(self, npc: Dict[str, Any]) -> str:
-        """格式化 NPC 信息用於 AI 提示"""
+        """格式化 NPC 信息用於 AI 提示（顯示時轉換為中文）"""
+        from world_data import get_location_name
+        loc_name = get_location_name(npc.get('location_id', 'unknown'))
+
         return f"""
 NPC: {npc.get('name')} ({npc.get('title', '無')})
 ID: {npc.get('id')}
 修為: {npc.get('tier')} ({npc.get('tier_name')})
-位置: {npc.get('location')}
+位置: {loc_name}
 性格: {npc.get('personality')}
 背景: {npc.get('lore', '無')}
 戰鬥風格: {npc.get('combat_style', '未知')}

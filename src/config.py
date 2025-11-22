@@ -14,7 +14,7 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_PATH = PROJECT_ROOT / "data"
 SETTINGS_PATH = PROJECT_ROOT / "settings"
-DB_PATH = PROJECT_ROOT / "game_data.db"
+DB_PATH = DATA_PATH / "game_data.db"
 
 # ============ OpenAI 配置 ============
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

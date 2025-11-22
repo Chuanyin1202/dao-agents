@@ -38,13 +38,15 @@ WORLD_MAP = {
         "description": "寬闊的練武場，外門弟子們在此切磋武藝。場中央立著一塊巨大的任務告示板。",
         "tier_requirement": 1.0,
         "exits": {
-            "south": "qingyun_foot",   # 往南 -> 山腳
-            "north": "qingyun_inner",  # 往北 -> 內門（需要築基期）
-            "west": "qingyun_library", # 往西 -> 藏經閣（需要築基期）
+            "south": "qingyun_foot",        # 往南 -> 山腳
+            "north": "qingyun_main_hall",   # 往北 -> 主殿
+            "west": "qingyun_library",      # 往西 -> 藏經閣（需要築基期）
+            "east": "qingyun_training_hall",# 往東 -> 演武場
         },
         "event_chance": 0.10,  # 人多，事件機率較高
         "features": ["可以切磋", "任務板"],
         "available_npcs": ["npc_002_elder_wang", "npc_003_disciple_li"],
+        "safe": True,
     },
 
     # 商業區：靈草堂
@@ -111,10 +113,130 @@ WORLD_MAP = {
         "tier_requirement": 1.0,
         "exits": {
             "north": "wildlands_forest", # 往北 -> 森林
+            "east": "town_tavern",       # 往東 -> 酒肆
         },
         "event_chance": 0.12,
         "features": ["可以交易", "物價便宜"],
-        "available_npcs": [],
+        "available_npcs": ["npc_003_merchant_fang"],
+    },
+
+    # 核心建築：青雲峰主殿
+    "qingyun_main_hall": {
+        "id": "qingyun_main_hall",
+        "name": "青雲峰·主殿",
+        "description": "巍峨的主殿，供奉著青雲門歷代祖師牌位。掌門平日在此處理宗門事務。",
+        "tier_requirement": 1.0,
+        "exits": {
+            "south": "qingyun_plaza",  # 往南 -> 外門廣場
+        },
+        "event_chance": 0.05,
+        "features": ["安全區域", "莊嚴肅穆"],
+        "available_npcs": ["npc_001_master_qingyun"],
+        "safe": True,
+    },
+
+    # 訓練區域：演武場
+    "qingyun_training_hall": {
+        "id": "qingyun_training_hall",
+        "name": "青雲門·演武場",
+        "description": "專門供弟子切磋武藝的場地，地面刻滿了劍痕和法術焦痕。",
+        "tier_requirement": 1.0,
+        "exits": {
+            "west": "qingyun_plaza",   # 往西 -> 外門廣場
+        },
+        "event_chance": 0.15,
+        "features": ["可以切磋", "修煉加成"],
+        "available_npcs": ["npc_004_disciple_red"],
+        "safe": True,
+    },
+
+    # 險峻區域：懸崖
+    "qingyun_cliff": {
+        "id": "qingyun_cliff",
+        "name": "青雲門·天絕崖",
+        "description": "青雲峰最高的懸崖，雲霧繚繞，視野開闊。傳聞有隱士在此修行。",
+        "tier_requirement": 2.0,  # 需要築基期
+        "exits": {
+            "down": "qingyun_inner",   # 往下 -> 內門
+        },
+        "event_chance": 0.20,
+        "features": ["靈氣濃郁", "危險地形", "可能有奇遇"],
+        "available_npcs": ["npc_005_hermit_stone"],
+    },
+
+    # 娛樂區域：酒肆
+    "town_tavern": {
+        "id": "town_tavern",
+        "name": "青雲鎮·醉仙樓",
+        "description": "熱鬧的酒肆，江湖人士和修仙者在此喝酒聊天。歌姬的歌聲悠揚動聽。",
+        "tier_requirement": 1.0,
+        "exits": {
+            "west": "nearby_market",   # 往西 -> 集市
+        },
+        "event_chance": 0.18,
+        "features": ["可以休息", "可以打聽消息"],
+        "available_npcs": ["npc_006_bard_luna"],
+        "safe": True,
+    },
+
+    # 內門核心：內門入口
+    "qingyun_inner_gate": {
+        "id": "qingyun_inner_gate",
+        "name": "青雲門·內門入口",
+        "description": "通往內門的關卡，只有築基期以上弟子方可進入。戒備森嚴。",
+        "tier_requirement": 2.0,
+        "exits": {
+            "north": "qingyun_inner",  # 往北 -> 內門
+            "south": "qingyun_plaza",  # 往南 -> 外門廣場
+        },
+        "event_chance": 0.10,
+        "features": ["檢查境界", "戒備森嚴"],
+        "available_npcs": ["npc_007_demon_cultivator"],
+    },
+
+    # 劍道聖地：劍道館
+    "qingyun_sword_dojo": {
+        "id": "qingyun_sword_dojo",
+        "name": "青雲門·問劍堂",
+        "description": "專門研習劍法的道場，牆上掛滿了名劍。劍痴老人常年在此研究劍道。",
+        "tier_requirement": 1.5,
+        "exits": {
+            "south": "qingyun_training_hall",  # 往南 -> 演武場
+        },
+        "event_chance": 0.12,
+        "features": ["可以學習劍法", "劍意濃郁"],
+        "available_npcs": ["npc_008_elder_sword"],
+        "safe": True,
+    },
+
+    # 佛門淨地：寺院
+    "qingyun_temple": {
+        "id": "qingyun_temple",
+        "name": "青雲門·淨心寺",
+        "description": "青雲門中的佛門寺院，香火繚繞，梵音陣陣。佛門弟子在此修行。",
+        "tier_requirement": 1.0,
+        "exits": {
+            "east": "qingyun_plaza",   # 往東 -> 外門廣場
+        },
+        "event_chance": 0.08,
+        "features": ["心境平和", "可以冥想"],
+        "available_npcs": ["npc_009_priest_compassion"],
+        "safe": True,
+    },
+
+    # 靈氣聖地：靈池
+    "qingyun_pool": {
+        "id": "qingyun_pool",
+        "name": "青雲門·碧波靈池",
+        "description": "青雲門的靈泉匯聚之地，池水清澈見底，靈氣氤氳。外門弟子常來此修煉。",
+        "tier_requirement": 1.0,
+        "exits": {
+            "north": "qingyun_plaza",  # 往北 -> 外門廣場
+        },
+        "event_chance": 0.10,
+        "features": ["靈氣濃郁", "可以打坐", "恢復法力"],
+        "available_npcs": ["npc_010_love_interest"],
+        "safe": True,
     },
 }
 

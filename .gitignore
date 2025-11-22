@@ -40,7 +40,9 @@ env/
 
 # Game Data
 game_data.db
+data/game_data.db
 game_data.db-journal
+data/game_data.db-journal
 *.db-wal
 *.db-shm
 
