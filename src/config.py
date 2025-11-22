@@ -60,7 +60,8 @@ INITIAL_PLAYER_STATE = {
     "mp": 50,                        # 法力值
     "max_mp": 50,
     "inventory": ["布衣", "乾糧"],   # 初始物品
-    "location": "青雲門·山腳",
+    "location_id": "qingyun_foot",   # ✅ 使用英文 ID
+    "location": "青雲門·山腳",        # ✅ 保留中文名（顯示用）
     "karma": 0,                      # 氣運值（影響奇遇）
     "relations": {},                 # {npc_id: affinity_score}
     "skills": ["基礎劍法"],           # 技能列表

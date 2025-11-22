@@ -58,11 +58,11 @@ class ActionCache:
         state_snapshot = {
             'hp': player_state.get('hp'),
             'mp': player_state.get('mp'),
-            'location': player_state.get('location'),
+            'location_id': player_state.get('location_id'),  # ✅ 改用 ID
             'tier': player_state.get('tier'),
             'karma': player_state.get('karma'),  # 影響奇遇機率
-            'inventory_size': len(player_state.get('inventory', [])),  # 背包變化
-            'skills_count': len(player_state.get('skills', []))  # 技能變化
+            'inventory': sorted(player_state.get('inventory', [])),  # ✅ 完整內容
+            'skills': sorted(player_state.get('skills', []))  # ✅ 完整內容
         }
 
         # 組合輸入和狀態

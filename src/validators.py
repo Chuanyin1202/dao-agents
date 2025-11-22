@@ -222,9 +222,47 @@ class ConsistencyValidator:
         return False
 
 
+def normalize_location_update(state_update: dict) -> dict:
+    """
+    翻譯層：強制將 AI 輸出的中文地名轉為 location_id
+    如果轉換失敗，拋出 ValueError
+
+    這是【ID 為王，名稱為皮】架構的核心翻譯層
+    """
+    from world_data import WORLD_MAP
+
+    if 'location_new' in state_update and state_update['location_new']:
+        location_input = state_update['location_new']
+
+        # 檢查是否已經是 ID
+        if location_input in WORLD_MAP:
+            state_update['location_id'] = location_input
+            # 移除 location_new，只保留 ID
+            del state_update['location_new']
+            return state_update
+
+        # 嘗試中文 → ID 轉換
+        for loc_id, loc_data in WORLD_MAP.items():
+            if loc_data['name'] == location_input:
+                state_update['location_id'] = loc_id
+                # 移除 location_new（只保留 ID）
+                del state_update['location_new']
+                return state_update
+
+        # 轉換失敗 → 報錯（讓遊戲重試）
+        print(f"❌ AI 輸出了無效地點: '{location_input}'")
+        print(f"   該地點不在地圖上。將移除此更新，讓 AI 重試。")
+        # 移除無效的 location_new
+        del state_update['location_new']
+
+    return state_update
+
+
 def auto_fix_state(narrative: str, state_update: dict) -> dict:
     """
     Level 3 兜底機制：使用 Regex 自動修復 state_update
+
+    修改重點：使用翻譯層統一處理 location 格式
 
     Args:
         narrative: 劇情敘述
@@ -262,34 +300,18 @@ def auto_fix_state(narrative: str, state_update: dict) -> dict:
             # ❌ 禁用猜測行為 - 無法確定數值時不修復
             print(f"  ⚠️  無法自動修復 HP 扣減（敘述中未找到明確數值，且可能是 NPC 受傷）")
 
-    # 修復移動（需驗證位置合法性）
+    # 修復移動（使用翻譯層）
     move_pattern = r'(來到|抵達|進入|走進|踏入)(?:了)?([^，。！？\s]{2,10})'
     move_match = re.search(move_pattern, narrative)
 
-    if move_match and not fixed_update.get('location_new'):
+    if move_match and not fixed_update.get('location_new') and not fixed_update.get('location_id'):
         destination = move_match.group(2)
+        # 提取到的是中文名稱，先暫存到 location_new
+        fixed_update['location_new'] = destination
+        print(f"  🔧 自動修復: 從敘述提取位置 '{destination}'")
 
-        # ✅ 驗證位置是否在地圖上
-        try:
-            from world_data import WORLD_MAP, get_location_name
-
-            # 檢查是否為合法地點名稱
-            found = False
-            for loc_id, loc_data in WORLD_MAP.items():
-                if loc_data['name'] == destination or loc_id == destination:
-                    fixed_update['location_new'] = loc_data['name']
-                    if 'location_id' not in fixed_update:
-                        fixed_update['location_id'] = loc_id
-                    print(f"  🔧 自動修復: 設置位置 {loc_data['name']} (ID: {loc_id})")
-                    found = True
-                    break
-
-            if not found:
-                print(f"  ⚠️  無法自動修復位置（'{destination}' 不在地圖上，可能是劇情中的臨時場景）")
-        except ImportError:
-            # 如果無法導入地圖數據，使用原始邏輯
-            fixed_update['location_new'] = destination
-            print(f"  🔧 自動修復: 設置位置 {destination}（未驗證合法性）")
+    # ✅ 最後統一使用翻譯層處理
+    fixed_update = normalize_location_update(fixed_update)
 
     return fixed_update
 
