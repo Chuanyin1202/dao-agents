@@ -78,10 +78,13 @@ class DaoGame:
         instant_actions = {
             'i': self._show_inventory_instant,
             's': self._show_status_instant,
+            'rest': self._handle_rest,
+            'r': self._handle_rest,
+            '休息': self._handle_rest,
         }
 
-        if user_input in instant_actions:
-            instant_actions[user_input]()
+        if user_input.lower() in instant_actions:
+            instant_actions[user_input.lower()]()
             return True
         return False
 
@@ -113,6 +116,54 @@ class DaoGame:
     def _show_status_instant(self):
         """即時顯示狀態（復用現有方法）"""
         self.print_status()
+
+    def _handle_rest(self):
+        """處理休息指令（恢復 MP）"""
+        from world_data import get_location_data
+
+        # 檢查是否在安全區域
+        current_loc_id = self.player_state.get('location_id', 'qingyun_foot')
+        loc_data = get_location_data(current_loc_id)
+
+        if not loc_data or not loc_data.get('safe', False):
+            print("\n❌ 此地不安全，無法休息！")
+            print("💡 提示：前往有【安全區域】標記的地點才能休息")
+            return
+
+        # 檢查 MP 是否已滿
+        current_mp = self.player_state.get('mp', 0)
+        max_mp = self.player_state.get('max_mp', 50)
+
+        if current_mp >= max_mp:
+            print("\n💤 你的法力已經充沛，不需要休息")
+            return
+
+        # 恢復 MP
+        mp_recovery = 20
+        new_mp = min(current_mp + mp_recovery, max_mp)
+        actual_recovery = new_mp - current_mp
+
+        self.player_state['mp'] = new_mp
+
+        # 推進時間
+        time_result = advance_game_time('REST')
+        self.player_state['current_tick'] = time_result['new_tick']
+
+        # 輸出結果
+        print(f"\n💤 你在{get_location_name(current_loc_id)}休息了片刻...")
+        print(f"✨ 恢復了 {actual_recovery} 點法力 ({current_mp} → {new_mp})")
+        print(f"⏱️  {time_result['time_description']}")
+
+        # 記錄事件
+        game_db.log_event(
+            self.player_id,
+            self.player_state.get('location', '未知'),
+            'REST',
+            f"在{get_location_name(current_loc_id)}休息，恢復了{actual_recovery}點法力"
+        )
+
+        # 存檔
+        self.save_game()
 
     def get_tier_name(self, tier: float) -> str:
         """根據 tier 值獲取境界名稱"""
@@ -473,8 +524,14 @@ class DaoGame:
         # 第 4 步：應用狀態更新
         self.apply_state_update(state_update)
 
+        # 第 4.5 步：推進時間（所有行動都會推進時間）
+        action_type = intent.get('intent', 'GENERAL')
+        time_result = advance_game_time(action_type)
+        self.player_state['current_tick'] = time_result['new_tick']
+
         # 第 5 步：輸出
         print(f"\n✨ DM: {narrative}")
+        print(f"⏱️  {time_result['time_description']}")
 
         # 記錄事件
         game_db.log_event(
