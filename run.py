@@ -26,5 +26,13 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         print(f"\n❌ 發生錯誤: {e}")
+
+        # 如果是 DEBUG 模式，顯示完整的錯誤堆棧
+        import os
+        if os.getenv('DEBUG', 'false').lower() == 'true':
+            import traceback
+            print("\n完整錯誤堆棧:")
+            traceback.print_exc()
+
         print("\n如需幫助，請查看 docs/README.md 或 docs/QUICKSTART.md")
         sys.exit(1)

@@ -265,6 +265,17 @@ class DaoGame:
             if processed_input is None:
                 continue
 
+            # 🎯 核心修復：檢查是否為方向輸入
+            # 方向輸入直接處理，不需要經過 Observer（繞過 AI）
+            if self.is_direction_input(processed_input):
+                if self.handle_direction_movement(processed_input):
+                    turn_count += 1
+                    # 每 3 回合自動存檔
+                    if turn_count % 3 == 0:
+                        self.save_game()
+                        print(f"[系統] 自動存檔完成（回合 {turn_count}）")
+                continue  # 方向移動已處理完成，跳過 AI 流程
+
             # 遊戲主流程（需要 AI 推理）
             self.process_action(processed_input)
             
@@ -327,10 +338,11 @@ class DaoGame:
                 print(f"\n❌ {validation['reason']}")
                 return
 
-            # 合法移動，檢查是否觸發事件
+            # 合法移動，檢查是否觸發事件（新手降低機率）
             trigger_event = should_trigger_random_event(
                 validation['destination_id'],
-                self.player_state.get('karma', 0)
+                self.player_state.get('karma', 0),
+                self.player_state.get('tier', 1.0)
             )
 
             if not trigger_event:
@@ -404,13 +416,63 @@ class DaoGame:
             self.player_state, logic_report, drama_proposal,
             intent, target_npc, recent_events  # ← 傳遞上下文
         )
-        
-        # 第 4 步：應用狀態更新
+
+        # 第 3.5 步：數據一致性驗證（三層策略）
         narrative = decision.get('narrative', '發生了某件奇異的事情。')
         state_update = decision.get('state_update', {})
-        
+
+        from validators import validator, auto_fix_state
+
+        validation = validator.validate(narrative, state_update)
+
+        # 顯示警告（Level 1 - 不阻止）
+        if validation['warnings']:
+            for warning in validation['warnings']:
+                if config.DEBUG:
+                    print(f"  {warning}")
+
+        # 處理嚴重錯誤（Level 2 & 3）
+        if not validation['valid']:
+            print("\n⚠️  檢測到數據不一致，正在修正...")
+            for error in validation['errors']:
+                print(f"  {error}")
+
+            # Level 2: 重試一次
+            if config.DEBUG:
+                print("\n  🔄 Level 2: 重新調用 Director...")
+
+            error_feedback = "\n".join(validation['errors'])
+
+            # 重新調用 Director（帶錯誤信息）
+            decision = agent_director(
+                self.player_state, logic_report, drama_proposal,
+                intent, target_npc, recent_events,
+                error_feedback=error_feedback  # 傳遞錯誤反饋
+            )
+
+            narrative = decision.get('narrative', '發生了某件奇異的事情。')
+            state_update = decision.get('state_update', {})
+
+            # 重新驗證
+            validation = validator.validate(narrative, state_update)
+
+            if not validation['valid']:
+                # Level 3: Regex 兜底
+                if config.DEBUG:
+                    print("\n  🔧 Level 3: 自動修復...")
+
+                state_update = auto_fix_state(narrative, state_update)
+
+                # 最後一次驗證（記錄結果）
+                final_validation = validator.validate(narrative, state_update)
+                if not final_validation['valid']:
+                    print("  ⚠️  自動修復後仍有錯誤（已盡力）")
+                else:
+                    print("  ✅ 自動修復成功")
+
+        # 第 4 步：應用狀態更新
         self.apply_state_update(state_update)
-        
+
         # 第 5 步：輸出
         print(f"\n✨ DM: {narrative}")
 
@@ -500,7 +562,7 @@ class DaoGame:
     def show_quick_commands(self):
         """顯示快捷命令"""
         # 獲取當前位置的 NPC
-        npcs_here = npc_manager.get_npcs_by_location(self.player_state['location'])
+        npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', self.player_state.get('location', 'qingyun_foot')))
 
         print("\n【快捷命令】")
         print("  m=移動  a=攻擊  t=對話  c=修煉  i=背包  l=查看周圍")
@@ -513,6 +575,102 @@ class DaoGame:
 
         print("\n  💡 或輸入完整命令（如：\"我要去靈草堂\"）")
 
+    def is_direction_input(self, user_input: str) -> bool:
+        """
+        判斷輸入是否為方向指令
+
+        方向輸入包括：
+        - 單字母：n, s, e, w
+        - 英文：north, south, east, west
+        - 中文：北, 南, 東, 西
+        - 短語：往北, 往南, 向東, 向西
+
+        Returns:
+            True 如果是方向輸入
+        """
+        from world_map import normalize_direction
+
+        # 嘗試標準化，如果能標準化就是方向輸入
+        normalized = normalize_direction(user_input)
+        return normalized is not None
+
+    def handle_direction_movement(self, direction_input: str) -> bool:
+        """
+        直接處理方向移動（繞過 Observer）
+
+        這是核心修復：單字母/簡短方向不需要 AI 解析
+
+        Args:
+            direction_input: 方向輸入（'n', '北', 'north' 等）
+
+        Returns:
+            True 如果成功處理
+            False 如果失敗
+        """
+        from world_map import normalize_direction, validate_movement, get_simple_movement_narrative
+        from world_map import get_location_mp_cost, get_location_time_cost
+
+        # 標準化方向
+        direction = normalize_direction(direction_input)
+
+        if not direction:
+            print(f"\n❌ 無法識別方向 '{direction_input}'")
+            return False
+
+        # 驗證移動
+        current_location_id = self.player_state.get('location_id', 'qingyun_foot')
+        player_tier = self.player_state.get('tier', 1.0)
+
+        validation = validate_movement(current_location_id, direction, player_tier)
+
+        if not validation['valid']:
+            print(f"\n❌ {validation['reason']}")
+            return False
+
+        # 計算消耗
+        mp_cost = get_location_mp_cost(current_location_id, validation['destination_id'])
+        time_cost = get_location_time_cost(current_location_id, validation['destination_id'])
+
+        # 檢查法力
+        current_mp = self.player_state.get('mp', 0)
+        if current_mp < mp_cost:
+            print(f"\n❌ 法力不足。需要 {mp_cost} 點，當前 {current_mp} 點。")
+            return False
+
+        # 生成移動敘述
+        narrative = get_simple_movement_narrative(
+            current_location_id,
+            validation['destination_id'],
+            direction
+        )
+
+        # 應用狀態更新
+        state_update = {
+            'location_new': validation['destination_name'],
+            'location_id': validation['destination_id'],
+            'mp_change': -mp_cost,
+            'tick_increase': time_cost
+        }
+
+        # 顯示敘述
+        print(f"\n{narrative}")
+
+        # 更新狀態
+        self.apply_state_update(state_update)
+
+        # 保存事件
+        game_db.log_event(
+            player_id=self.player_id,
+            location=validation['destination_name'],
+            event_type='MOVE',
+            description=narrative
+        )
+
+        # 顯示新位置
+        self.print_status()
+
+        return True
+
     def handle_shortcut(self, user_input: str) -> Optional[str]:
         """
         處理快捷命令，轉換為完整指令
@@ -521,9 +679,38 @@ class DaoGame:
             str: 轉換後的完整指令
             None: 無效命令，跳過此回合
         """
+        # 特殊處理：移動命令（顯示方向選單）
+        if user_input == 'm':
+            from world_data import get_location_data, get_location_name
+
+            current_loc_id = self.player_state.get('location_id', 'qingyun_foot')
+            loc_data = get_location_data(current_loc_id)
+
+            if not loc_data:
+                print("\n[錯誤] 無法識別當前位置。")
+                return None
+
+            exits = loc_data.get('exits', {})
+
+            if not exits:
+                print("\n[提示] 這裡似乎沒有出路...")
+                return None
+
+            print(f"\n【可用方向】")
+            direction_map = {'north': '北', 'south': '南', 'east': '東', 'west': '西'}
+            for direction, dest_id in exits.items():
+                dest_name = get_location_name(dest_id)
+                dir_chinese = direction_map.get(direction, direction)
+                print(f"  {dir_chinese} ({direction[0]}) → {dest_name}")
+
+            choice = input("\n請選擇方向 (或按 Enter 取消): ").strip()
+            if not choice:
+                return None
+
+            return choice  # 返回用戶選擇的方向
+
         # 基礎快捷命令映射
         shortcuts = {
-            'm': "我要移動到其他地方",
             'c': "我要打坐修煉",
             'i': "查看我的背包",
             'l': "我要查看周圍環境"
@@ -535,7 +722,7 @@ class DaoGame:
 
         # 特殊處理：攻擊命令（需要驗證目標）
         if user_input == 'a':
-            npcs_here = npc_manager.get_npcs_by_location(self.player_state['location'])
+            npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', self.player_state.get('location', 'qingyun_foot')))
             if not npcs_here:
                 print("\n[提示] 附近沒有可攻擊的目標。")
                 return None  # 返回 None 表示跳過
@@ -545,7 +732,7 @@ class DaoGame:
         # 處理 NPC 對話快捷命令（t1, t2, t3）
         if user_input.startswith('t') and len(user_input) == 2 and user_input[1].isdigit():
             npc_index = int(user_input[1]) - 1
-            npcs_here = npc_manager.get_npcs_by_location(self.player_state['location'])
+            npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', self.player_state.get('location', 'qingyun_foot')))
 
             if 0 <= npc_index < len(npcs_here):
                 npc = npcs_here[npc_index]

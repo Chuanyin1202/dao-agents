@@ -20,6 +20,10 @@ def extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
     從文本中提取 JSON 對象（更強大的版本）
     嘗試多種策略提取 JSON
     """
+    # 檢查 text 是否為 None 或空
+    if not text:
+        return None
+
     # 策略 1: 直接解析
     try:
         return json.loads(text.strip())
@@ -74,9 +78,15 @@ def call_gpt(system_prompt: str, user_message: str, model: str = "gpt-4o-mini",
         )
         
         result = response.choices[0].message.content
+
+        # 檢查 API 返回的內容是否為 None
+        if result is None:
+            print(f"[WARNING] API 返回了 None，可能是內容過濾或其他問題")
+            return ""
+
         if config.VERBOSE_API_CALLS:
             print(f"[API] 回應長度: {len(result)} 字")
-        
+
         return result
     except Exception as e:
         print(f"[ERROR] API 調用失敗: {e}")
@@ -254,9 +264,10 @@ def agent_drama(player_state: Dict[str, Any], intent: Dict[str, Any],
 def agent_director(player_state: Dict[str, Any], logic_report: str,
                   drama_proposal: str, intent: Dict[str, Any],
                   npc: Optional[Dict[str, Any]] = None,
-                  recent_events: list = None) -> Dict[str, Any]:
+                  recent_events: list = None,
+                  error_feedback: str = None) -> Dict[str, Any]:
     """
-    決策者 Agent - 最終決策（帶上下文記憶）
+    決策者 Agent - 最終決策（帶上下文記憶 + 錯誤修正）
 
     Args:
         player_state: 玩家狀態
@@ -265,11 +276,15 @@ def agent_director(player_state: Dict[str, Any], logic_report: str,
         intent: 意圖字典
         npc: 目標 NPC
         recent_events: 最近事件記錄
+        error_feedback: 上一次輸出的錯誤反饋（用於重試）
 
     輸出：JSON 格式的故事 + 狀態更新
     """
     if config.DEBUG:
-        print(f"\n【天道】正在做出最終決策...")
+        if error_feedback:
+            print(f"\n【天道】正在修正錯誤並重新決策...")
+        else:
+            print(f"\n【天道】正在做出最終決策...")
 
     context = f"""
 【邏輯分析】
@@ -292,6 +307,11 @@ def agent_director(player_state: Dict[str, Any], logic_report: str,
         context += "\n【最近的劇情】\n"
         for event in reversed(recent_events):
             context += f"- {event['description'][:150]}...\n"
+
+    # 添加錯誤反饋（如果是重試）
+    if error_feedback:
+        context += f"\n⚠️ 【上一次輸出的錯誤】\n{error_feedback}\n"
+        context += "請修正以上錯誤，確保敘述與狀態更新完全一致。\n"
 
     context += "\n請綜合上述信息，輸出最終決策 JSON。"
     

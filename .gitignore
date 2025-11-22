@@ -60,3 +60,4 @@ logs/
 .coverage
 htmlcov/
 .tox/
+test_results.txt

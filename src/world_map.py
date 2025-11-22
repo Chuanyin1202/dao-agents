@@ -102,14 +102,16 @@ def validate_movement(
 def should_trigger_random_event(
     location_id: str,
     player_karma: int,
+    player_tier: float = 1.0,
     base_multiplier: float = 1.0
 ) -> bool:
     """
-    決定是否觸發隨機事件
+    決定是否觸發隨機事件（新手降低機率）
 
     Args:
         location_id: 當前地點 ID
         player_karma: 玩家 karma 值
+        player_tier: 玩家境界等級（練氣期 1.0-1.9）
         base_multiplier: 基礎機率倍率（用於調試或特殊情況）
 
     Returns:
@@ -120,6 +122,10 @@ def should_trigger_random_event(
         return False
 
     base_chance = location.get("event_chance", 0.0)
+
+    # 新手保護：練氣期 1-2 級（tier < 1.5）事件機率減少 70%
+    if player_tier < 1.5:
+        base_chance *= 0.3
 
     # karma 影響事件機率（最多 +10%）
     karma_bonus = min(player_karma / 1000, 0.10)

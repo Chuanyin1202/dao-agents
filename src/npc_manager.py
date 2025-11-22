@@ -43,9 +43,21 @@ class NPCManager:
                 return npc
         return None
     
-    def get_npcs_by_location(self, location: str) -> List[Dict[str, Any]]:
-        """獲取某地點的所有 NPC"""
-        return [npc for npc in self.npcs.values() if npc.get('location') == location]
+    def get_npcs_by_location(self, location_id: str) -> List[Dict[str, Any]]:
+        """
+        獲取某地點的所有 NPC
+
+        Args:
+            location_id: 地點 ID（如 "qingyun_foot"）
+
+        Returns:
+            該地點的所有 NPC 列表
+        """
+        # 支援舊格式 location 和新格式 location_id
+        return [
+            npc for npc in self.npcs.values()
+            if npc.get('location') == location_id or npc.get('location_id') == location_id
+        ]
     
     def get_all_npcs(self) -> List[Dict[str, Any]]:
         """獲取所有 NPC"""

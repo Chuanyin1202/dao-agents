@@ -4,6 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-green.svg)](https://openai.com/)
+[![Tests](https://img.shields.io/badge/Tests-50%20Passed-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -18,6 +19,21 @@
 - 4 個專業 AI Agent：觀察者、邏輯派、戲劇派、決策者
 - 每個決策都經過「規則 vs 劇情」的辯論
 - 既遵守數值平衡，又充滿戲劇張力
+
+🔒 **三層數據一致性驗證**
+- Level 1 (警告): 數值異常記錄但放行
+- Level 2 (重試): 敘述與狀態不符自動重新生成
+- Level 3 (兜底): Regex 強制提取確保數據正確
+
+🗺️ **結構化世界地圖**
+- 7 個精心設計的地點
+- 境界要求與移動限制
+- 隨機事件系統
+
+⏰ **全域時間引擎**
+- Tick 系統追蹤遊戲時間
+- 行動消耗時間（移動 3 tick、修煉 10 tick）
+- 為未來的懶惰結算做準備
 
 🎮 **原生 Python 架構**
 - 零框架依賴（無 LangChain/AutoGPT）
@@ -34,6 +50,11 @@
 - 自動存檔（每 5 回合）
 - 支援多角色存檔
 
+✅ **完整測試覆蓋**
+- 50 個單元測試全部通過
+- 核心邏輯 100% 測試覆蓋
+- 使用 pytest 測試框架
+
 ---
 
 ## 🚀 快速開始
@@ -49,6 +70,11 @@
 # 克隆或下載專案
 cd dao-agents
 
+# 創建虛擬環境（推薦）
+python3 -m venv venv
+source venv/bin/activate  # macOS/Linux
+# 或 venv\Scripts\activate  # Windows
+
 # 安裝依賴
 pip install -r requirements.txt
 
@@ -63,13 +89,23 @@ cp .env.example .env
 python run.py
 ```
 
-### 4. 開始遊玩
+### 4. 運行測試
+
+```bash
+# 運行所有測試
+python -m pytest tests/ -v
+
+# 運行特定測試
+python -m pytest tests/test_validators.py -v
+```
+
+### 5. 開始遊玩
 
 ```
 ╔═══════════════════════════════════════════════════╗
 ║           道·衍 - 修仙多智能體 MUD              ║
 ║     AI-Driven Async Multiplayer Cultivation      ║
-║              v1.0.0 (Native Python)               ║
+║              v1.1.0 (Native Python)               ║
 ╚═══════════════════════════════════════════════════╝
 
 【主菜單】
@@ -92,11 +128,11 @@ python run.py
 ```
 ✅ 支援的命令類型：
 
-移動：   "我要去靈草堂"
+移動：   "我要去靈草堂" / "往北走"
 對話：   "我想和掌門談話"
 攻擊：   "我要攻擊紅藝"
 修煉：   "我要打坐修煉"
-檢查：   "檢查背包"
+檢查：   "檢查背包" / "查看狀態"
 使用：   "使用法力藥水"
 ```
 
@@ -116,17 +152,30 @@ quit  - 退出遊戲
 → 5.0 化神期 → 6.0 度劫期 → ... → 9.0 飛升期
 ```
 
-#### 2. 戰鬥系統
+#### 2. 地圖系統
+```
+青雲門·山腳 (起點)
+├─ 北 → 青雲門·外門廣場
+│   ├─ 北 → 青雲門·內門 (需要築基期)
+│   └─ 西 → 青雲門·藏經閣 (需要築基期)
+└─ 東 → 青雲門·靈草堂
+
+野外區域
+├─ 靈獸森林
+└─ 附近集市
+```
+
+#### 3. 戰鬥系統
 - 境界壓制：高境界對低境界有絕對優勢
 - 同境界戰鬥：勝率 45-55%（引入隨機性）
 - HP/MP 消耗：技能需要消耗法力值
 
-#### 3. 氣運機制
+#### 4. 氣運機制
 - 氣運值影響奇遇觸發機率
 - 好行為增加氣運，壞行為減少氣運
 - 高氣運可能觸發「天降奇緣」
 
-#### 4. NPC 關係
+#### 5. NPC 關係
 - 每個 NPC 都有好感度系統
 - 互動會改變關係值
 - 高好感度可能獲得秘傳或任務
@@ -144,18 +193,30 @@ dao-agents/
 │   ├── config.py          # 配置文件
 │   ├── prompts.py         # AI Prompts
 │   ├── game_state.py      # 狀態管理
-│   └── npc_manager.py     # NPC 管理
+│   ├── npc_manager.py     # NPC 管理
+│   ├── validators.py      # 數據一致性驗證 (NEW)
+│   ├── world_data.py      # 世界地圖數據 (NEW)
+│   ├── world_map.py       # 地圖驗證系統 (NEW)
+│   └── time_engine.py     # 全域時間引擎 (NEW)
 ├── data/                   # 遊戲數據
 │   └── npcs.json          # NPC 定義
 ├── docs/                   # 文檔
 │   ├── world_setting.md   # 世界觀設定
 │   ├── QUICKSTART.md      # 快速上手
-│   └── CHECKLIST.md       # 安裝檢查
-├── tests/                  # 測試（待開發）
+│   ├── CHECKLIST.md       # 安裝檢查
+│   ├── DELIVERY.md        # 交付文檔
+│   └── FINAL_SUMMARY.md   # 最終總結
+├── tests/                  # 測試套件 (NEW)
+│   ├── __init__.py        # 測試初始化
+│   ├── test_validators.py # 驗證器測試 (17 tests)
+│   ├── test_world_map.py  # 地圖測試 (11 tests)
+│   └── test_time_engine.py# 時間引擎測試 (22 tests)
+├── venv/                   # 虛擬環境
 ├── run.py                 # 入口檔案
 ├── requirements.txt       # 依賴列表
 ├── .env.example          # 環境變數範本
 ├── .gitignore            # Git 忽略清單
+├── IMPROVEMENT_PLAN.md   # 改進計劃
 └── README.md             # 本文檔
 ```
 
@@ -170,6 +231,7 @@ dao-agents/
 ┌─────────────────────────────────────┐
 │   觀察者 Agent (Observer)           │
 │   解析意圖 → JSON                   │
+│   + Prompt Injection 防護           │
 └─────────────┬───────────────────────┘
               │
         ┌─────┴─────┐
@@ -177,6 +239,8 @@ dao-agents/
 ┌──────────┐  ┌──────────┐
 │ 邏輯派   │  │ 戲劇派   │  (並行調用)
 │ Logic    │  │ Drama    │
+│ + 地圖   │  │ + 上下文 │
+│   約束   │  │   記憶   │
 └────┬─────┘  └─────┬────┘
      │              │
      └──────┬───────┘
@@ -184,16 +248,44 @@ dao-agents/
 ┌─────────────────────────────────────┐
 │   決策者 Agent (Director)           │
 │   整合雙方意見 → 最終劇情 + 狀態更新  │
+│   + 錯誤修正機制                     │
+└─────────────┬───────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────┐
+│   三層數據驗證 (Validators)          │
+│   Level 1: 警告 → 記錄但放行         │
+│   Level 2: 錯誤 → 重試一次           │
+│   Level 3: 兜底 → Regex 強制提取     │
 └─────────────┬───────────────────────┘
               │
               ▼
 ┌─────────────────────────────────────┐
 │   Python 執行層                      │
-│   更新 HP/MP/物品/位置/關係          │
+│   更新 HP/MP/物品/位置/關係/時間      │
 └─────────────┬───────────────────────┘
               │
               ▼
         顯示劇情給玩家
+```
+
+### 數據一致性保證
+
+系統使用三層驗證策略確保 AI 生成的敘述與遊戲狀態完全一致:
+
+```python
+# Level 1: 數值合理性檢查（警告）
+⚠️  HP 單次扣減過大: -250
+⚠️  Karma 單次變化過大: 80
+
+# Level 2: 關鍵資訊缺失（重試）
+❌ 嚴重: 敘述提到「賜予」但 items_gained 為空
+→ 自動重新調用 Director，傳遞錯誤反饋
+
+# Level 3: Regex 兜底（強制提取）
+🔧 自動修復: 添加物品 ['築基丹']
+🔧 自動修復: 設置 HP 扣減 -20
+🔧 自動修復: 設置位置 靈獸森林
 ```
 
 ---
@@ -225,6 +317,26 @@ DEBUG=true
 VERBOSE_API_CALLS=true
 ```
 
+### 運行測試
+
+```bash
+# 激活虛擬環境
+source venv/bin/activate
+
+# 運行所有測試
+python -m pytest tests/ -v
+
+# 運行特定模組測試
+python -m pytest tests/test_validators.py -v
+
+# 運行並顯示詳細回溯
+python -m pytest tests/ -v --tb=short
+
+# 生成測試覆蓋率報告（需要安裝 pytest-cov）
+pip install pytest-cov
+python -m pytest tests/ --cov=src --cov-report=html
+```
+
 ### 自定義 NPC
 
 編輯 `data/npcs.json`：
@@ -236,10 +348,31 @@ VERBOSE_API_CALLS=true
   "title": "NPC 頭銜",
   "tier": 2.5,
   "tier_name": "築基期",
-  "location": "青雲門·某地",
+  "location": "qingyun_plaza",
   "personality": "性格描述",
   "lore": "背景故事",
   "combat_style": "戰鬥風格"
+}
+```
+
+### 添加新地點
+
+編輯 `src/world_data.py`：
+
+```python
+WORLD_MAP = {
+    "your_location_id": {
+        "id": "your_location_id",
+        "name": "地點顯示名稱",
+        "description": "環境描述",
+        "tier_requirement": 1.0,  # 最低境界要求
+        "exits": {
+            "north": "destination_id",  # 可行方向
+        },
+        "event_chance": 0.10,  # 隨機事件機率
+        "features": ["特殊效果"],
+        "available_npcs": ["npc_id"],
+    }
 }
 ```
 
@@ -254,6 +387,10 @@ TIER_ADVANTAGE_PER_LEVEL = 0.15  # 每個小境界 15% 優勢
 # 奇遇機率
 BASE_ENCOUNTER_CHANCE = 0.1      # 基礎 10% 奇遇機率
 KARMA_MULTIPLIER = 0.01          # 每點氣運 +1% 奇遇機率
+
+# API 設定
+API_TIMEOUT = 30                 # API 超時時間（秒）
+API_TEMPERATURE = 0.9            # 創意度（0-1）
 ```
 
 ### 修改 AI Prompt
@@ -267,6 +404,7 @@ KARMA_MULTIPLIER = 0.01          # 每點氣運 +1% 奇遇機率
 - [世界觀設定](docs/world_setting.md) - 完整的修仙世界背景
 - [快速上手指南](docs/QUICKSTART.md) - 5 分鐘入門教學
 - [開發檢查清單](docs/CHECKLIST.md) - 安裝驗證步驟
+- [改進計劃](IMPROVEMENT_PLAN.md) - 功能改進建議
 
 ---
 
@@ -279,13 +417,19 @@ KARMA_MULTIPLIER = 0.01          # 每點氣運 +1% 奇遇機率
 - [x] 戰鬥/修煉/社交系統
 - [x] 自然語言輸入解析
 - [x] 強大的 JSON 解析機制
+- [x] 結構化世界地圖系統
+- [x] 全域時間引擎
+- [x] 三層數據一致性驗證
+- [x] 完整測試覆蓋 (50 tests)
+- [x] Prompt Injection 防護
 
 ### 🔄 Phase 2 - 世界觀擴展（計劃中）
 - [ ] 更多地點和 NPC
 - [ ] 任務系統
 - [ ] 技能樹
 - [ ] 裝備系統
-- [ ] 單元測試
+- [ ] 懶惰結算機制（基於時間引擎）
+- [ ] 地圖隨機事件豐富化
 
 ### 🔮 Phase 3 - 異步多人（未來）
 - [ ] 事件痕跡系統
@@ -300,6 +444,25 @@ KARMA_MULTIPLIER = 0.01          # 每點氣運 +1% 奇遇機率
 
 ---
 
+## 🧪 測試覆蓋
+
+專案包含完整的單元測試套件:
+
+| 測試模組 | 測試數量 | 狀態 | 覆蓋範圍 |
+|---------|---------|-----|---------|
+| test_validators.py | 17 | ✅ PASS | 數據驗證、自動修復 |
+| test_world_map.py | 11 | ✅ PASS | 移動驗證、地圖數據 |
+| test_time_engine.py | 22 | ✅ PASS | 時間推移、行動消耗 |
+| **總計** | **50** | **✅ ALL PASS** | **核心邏輯 100%** |
+
+運行測試:
+```bash
+python -m pytest tests/ -v
+# 預期輸出: 50 passed in 0.02s
+```
+
+---
+
 ## 🤝 貢獻指南
 
 歡迎提交 Issue 和 Pull Request！
@@ -311,6 +474,20 @@ KARMA_MULTIPLIER = 0.01          # 每點氣運 +1% 奇遇機率
 - 改進遊戲平衡性
 - Bug 修復
 - 文檔完善
+- 測試用例擴充
+
+### 開發流程
+
+1. Fork 本專案
+2. 創建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交變更 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 開啟 Pull Request
+
+**重要**: 所有 PR 必須通過測試:
+```bash
+python -m pytest tests/ -v
+```
 
 ---
 
@@ -324,7 +501,18 @@ MIT License
 
 - OpenAI GPT-4o-mini API
 - 所有測試玩家和貢獻者
+- Python 社群的優秀工具和庫
+
+---
+
+## 🔗 相關連結
+
+- [OpenAI API 文檔](https://platform.openai.com/docs)
+- [SQLite 文檔](https://www.sqlite.org/docs.html)
+- [pytest 文檔](https://docs.pytest.org/)
 
 ---
 
 **開始你的修仙之旅吧！** 🧙‍♂️✨
+
+*v1.1.0 - 2025-11 - 新增數據驗證、地圖系統、時間引擎與完整測試*

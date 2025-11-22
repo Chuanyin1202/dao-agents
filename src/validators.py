@@ -1,0 +1,298 @@
+# validators.py
+# 道·衍 - 數據一致性驗證系統
+
+"""
+三層驗證策略：
+- Level 1 (警告): 數值微差，記錄但放行
+- Level 2 (嚴重錯誤): items_gained 缺失等，重試一次
+- Level 3 (兜底): 重試仍失敗，Regex 強制提取
+"""
+
+from typing import Dict, List, Any, Tuple
+import re
+
+
+class ConsistencyValidator:
+    """
+    驗證 Director Agent 生成的敘述 (Narrative) 與 狀態更新 (State Update) 是否一致。
+    """
+
+    def __init__(self):
+        # 定義關鍵詞映射
+        self.gain_keywords = ['獲得', '得到', '撿起', '拾取', '賜予', '授予', '領悟', '取得', '收穫']
+        self.lose_keywords = ['失去', '消耗', '用掉', '損壞', '丟失', '失落']
+        self.hp_loss_keywords = ['受傷', '疼痛', '吐血', '重創', '震飛', '損傷', '受損', '流血']
+        self.move_keywords = ['來到', '抵達', '進入', '前往', '到達', '走進', '踏入']
+        self.skill_keywords = ['學會', '領悟', '習得', '掌握', '悟出']
+
+    def validate(self, narrative: str, state_update: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        執行驗證
+
+        Args:
+            narrative: 劇情敘述
+            state_update: 狀態更新字典
+
+        Returns:
+            {
+                "valid": bool,
+                "errors": List[str],   # 需要重試的嚴重錯誤
+                "warnings": List[str]  # 僅做記錄的警告
+            }
+        """
+        errors = []
+        warnings = []
+
+        narrative_text = narrative if narrative else ""
+
+        # 1. 檢查物品獲得
+        gained_items = state_update.get('items_gained', [])
+        for keyword in self.gain_keywords:
+            if keyword in narrative_text:
+                # 排除否定句
+                if self._is_negative_context(narrative_text, keyword):
+                    continue
+
+                # 如果敘述提到獲得，但列表為空 -> 嚴重錯誤
+                if not gained_items:
+                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 items_gained 為空")
+                    break
+
+        # 反向檢查：狀態有更新，但敘述沒提 (警告即可)
+        for item in gained_items:
+            if item not in narrative_text:
+                warnings.append(f"⚠️  狀態增加了物品「{item}」但敘述中未提及")
+
+        # 2. 檢查物品失去
+        lost_items = state_update.get('items_lost', [])
+        for keyword in self.lose_keywords:
+            if keyword in narrative_text:
+                # 排除否定句
+                if self._is_negative_context(narrative_text, keyword):
+                    continue
+
+                if not lost_items:
+                    warnings.append(f"⚠️  敘述提到「{keyword}」但 items_lost 為空")
+                    break
+
+        # 3. 檢查 HP 變化 (受傷檢查) - 只檢查玩家受傷
+        hp_change = state_update.get('hp_change', 0)
+        for keyword in self.hp_loss_keywords:
+            if keyword in narrative_text:
+                # 排除否定句
+                if self._is_negative_context(narrative_text, keyword):
+                    continue
+
+                # 檢查是否為玩家受傷（而非 NPC）
+                if not self._is_player_subject(narrative_text, keyword):
+                    continue
+
+                if hp_change >= 0:
+                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 HP 未扣減 (當前 hp_change: {hp_change})")
+                    break
+
+        # 4. 檢查移動
+        new_loc = state_update.get('location_new')
+        for keyword in self.move_keywords:
+            if keyword in narrative_text:
+                # 排除「想要」「打算」等意圖詞
+                if self._is_intention_context(narrative_text, keyword):
+                    continue
+
+                if not new_loc:
+                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 location_new 為空")
+                    break
+
+        # 5. 檢查技能學習
+        skills_gained = state_update.get('skills_gained', [])
+        for keyword in self.skill_keywords:
+            if keyword in narrative_text:
+                if self._is_negative_context(narrative_text, keyword):
+                    continue
+
+                if not skills_gained:
+                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」技能但 skills_gained 為空")
+                    break
+
+        # 6. 數值合理性檢查 (Sanity Check) - Level 1 警告
+        if hp_change < -200:
+            warnings.append(f"⚠️  HP 單次扣減過大: {hp_change}")
+
+        if hp_change > 100:
+            warnings.append(f"⚠️  HP 單次恢復過大: {hp_change}")
+
+        karma_change = state_update.get('karma_change', 0)
+        if abs(karma_change) > 50:
+            warnings.append(f"⚠️  Karma 單次變化過大: {karma_change}")
+
+        mp_change = state_update.get('mp_change', 0)
+        if mp_change < -100:
+            warnings.append(f"⚠️  法力單次消耗過大: {mp_change}")
+
+        experience_gained = state_update.get('experience_gained', 0)
+        if experience_gained > 500:
+            warnings.append(f"⚠️  單次經驗獲得過大: {experience_gained}")
+
+        return {
+            'valid': len(errors) == 0,
+            'errors': errors,
+            'warnings': warnings
+        }
+
+    def _is_negative_context(self, text: str, keyword: str) -> bool:
+        """
+        檢查關鍵詞是否在否定句中
+
+        例如：「沒有獲得」「無法獲得」「未能獲得」
+        """
+        negative_words = ['沒有', '無法', '未能', '不曾', '並未', '從未']
+
+        # 查找關鍵詞位置
+        keyword_pos = text.find(keyword)
+        if keyword_pos == -1:
+            return False
+
+        # 檢查關鍵詞前 10 個字符內是否有否定詞
+        context_start = max(0, keyword_pos - 10)
+        context = text[context_start:keyword_pos + len(keyword)]
+
+        for neg_word in negative_words:
+            if neg_word in context:
+                return True
+
+        return False
+
+    def _is_player_subject(self, text: str, keyword: str) -> bool:
+        """
+        檢查關鍵詞的主語是否為玩家（而非 NPC）
+
+        例如：
+        - "你受了重傷" → True (玩家)
+        - "霜焰獅受了重傷" → False (NPC)
+        - "牠身上佈滿傷痕" → False (NPC)
+        """
+        keyword_pos = text.find(keyword)
+        if keyword_pos == -1:
+            return False
+
+        # 向前檢查 20 個字符
+        context_start = max(0, keyword_pos - 20)
+        context_before = text[context_start:keyword_pos]
+
+        # NPC 指示詞（如果出現這些，說明不是玩家）
+        npc_indicators = ['牠', '他', '她', '它', '靈獸', '敵人', '師兄', '師姐', '長老', '弟子',
+                         '霜焰獅', '妖獸', '魔獸', '對手', '修士', '獸', '人', '獅']
+
+        # 如果上下文中有 NPC 指示詞，判定為 NPC 受傷
+        for indicator in npc_indicators:
+            if indicator in context_before:
+                return False
+
+        # 玩家指示詞（如果出現這些，確認是玩家）
+        player_indicators = ['你', '自己', '你的', '身體', '傷口']
+
+        for indicator in player_indicators:
+            if indicator in context_before:
+                return True
+
+        # 如果既沒有玩家指示詞也沒有 NPC 指示詞，保守起見判定為玩家
+        # （這樣可以觸發驗證，但後續 Director 可以修正）
+        return True
+
+    def _is_intention_context(self, text: str, keyword: str) -> bool:
+        """
+        檢查是否是意圖而非實際行動
+
+        例如：「想要來到」「打算進入」「準備前往」
+        """
+        intention_words = ['想', '想要', '打算', '準備', '計劃', '希望', '試圖']
+
+        keyword_pos = text.find(keyword)
+        if keyword_pos == -1:
+            return False
+
+        # 檢查關鍵詞前 8 個字符內是否有意圖詞
+        context_start = max(0, keyword_pos - 8)
+        context = text[context_start:keyword_pos]
+
+        for intent_word in intention_words:
+            if intent_word in context:
+                return True
+
+        return False
+
+
+def auto_fix_state(narrative: str, state_update: dict) -> dict:
+    """
+    Level 3 兜底機制：使用 Regex 自動修復 state_update
+
+    Args:
+        narrative: 劇情敘述
+        state_update: 原始狀態更新
+
+    Returns:
+        修復後的狀態更新
+    """
+    fixed_update = state_update.copy()
+
+    # 修復物品獲得
+    if '獲得' in narrative or '得到' in narrative or '賜予' in narrative:
+        # 匹配「獲得XXX」「得到XXX」「賜予你XXX」等模式
+        # 中文物品名通常 2-6 個字
+        pattern = r'(獲得|得到|撿起|拾取|賜予|授予|取得)(?:了)?(?:你)?(?:一[個件把枚塊顆粒張本份])?([^，。！？\s]{2,6})'
+        matches = re.findall(pattern, narrative)
+
+        if matches and not fixed_update.get('items_gained'):
+            # 提取第二組（物品名）
+            items = list(set([match[1] for match in matches]))  # 去重
+            fixed_update['items_gained'] = items
+            print(f"  🔧 自動修復: 添加物品 {items}")
+
+    # 修復 HP 扣減（只在有明確數值時修復）
+    if ('受傷' in narrative or '疼痛' in narrative or '吐血' in narrative) and fixed_update.get('hp_change', 0) >= 0:
+        # 嘗試從敘述中提取傷害數值
+        damage_pattern = r'(?:損失|扣除|減少|失去)(?:了)?(\d+)(?:點)?(?:生命|HP|血量)'
+        damage_match = re.search(damage_pattern, narrative)
+
+        if damage_match:
+            damage = int(damage_match.group(1))
+            fixed_update['hp_change'] = -damage
+            print(f"  🔧 自動修復: 設置 HP 扣減 -{damage}")
+        else:
+            # ❌ 禁用猜測行為 - 無法確定數值時不修復
+            print(f"  ⚠️  無法自動修復 HP 扣減（敘述中未找到明確數值，且可能是 NPC 受傷）")
+
+    # 修復移動（需驗證位置合法性）
+    move_pattern = r'(來到|抵達|進入|走進|踏入)(?:了)?([^，。！？\s]{2,10})'
+    move_match = re.search(move_pattern, narrative)
+
+    if move_match and not fixed_update.get('location_new'):
+        destination = move_match.group(2)
+
+        # ✅ 驗證位置是否在地圖上
+        try:
+            from world_data import WORLD_MAP, get_location_name
+
+            # 檢查是否為合法地點名稱
+            found = False
+            for loc_id, loc_data in WORLD_MAP.items():
+                if loc_data['name'] == destination or loc_id == destination:
+                    fixed_update['location_new'] = loc_data['name']
+                    if 'location_id' not in fixed_update:
+                        fixed_update['location_id'] = loc_id
+                    print(f"  🔧 自動修復: 設置位置 {loc_data['name']} (ID: {loc_id})")
+                    found = True
+                    break
+
+            if not found:
+                print(f"  ⚠️  無法自動修復位置（'{destination}' 不在地圖上，可能是劇情中的臨時場景）")
+        except ImportError:
+            # 如果無法導入地圖數據，使用原始邏輯
+            fixed_update['location_new'] = destination
+            print(f"  🔧 自動修復: 設置位置 {destination}（未驗證合法性）")
+
+    return fixed_update
+
+
+# 全局實例
+validator = ConsistencyValidator()
