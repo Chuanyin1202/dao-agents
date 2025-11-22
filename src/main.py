@@ -474,7 +474,7 @@ class DaoGame:
 
         from validators import validator, auto_fix_state
 
-        validation = validator.validate(narrative, state_update)
+        validation = validator.validate(narrative, state_update, self.player_state)
 
         # 顯示警告（Level 1 - 不阻止）
         if validation['warnings']:
@@ -505,7 +505,7 @@ class DaoGame:
             state_update = decision.get('state_update', {})
 
             # 重新驗證
-            validation = validator.validate(narrative, state_update)
+            validation = validator.validate(narrative, state_update, self.player_state)
 
             if not validation['valid']:
                 # Level 3: Regex 兜底
@@ -515,7 +515,7 @@ class DaoGame:
                 state_update = auto_fix_state(narrative, state_update)
 
                 # 最後一次驗證（記錄結果）
-                final_validation = validator.validate(narrative, state_update)
+                final_validation = validator.validate(narrative, state_update, self.player_state)
                 if not final_validation['valid']:
                     print("  ⚠️  自動修復後仍有錯誤（已盡力）")
                 else:
@@ -544,14 +544,22 @@ class DaoGame:
 
         # 快取結果（只快取「可快取行動」）
         if cache_key and intent_type not in NON_CACHEABLE_INTENTS:
+            # 快取前先經過翻譯層驗證
+            from validators import normalize_location_update
+            validated_update = normalize_location_update(state_update.copy())
+
             action_cache.set(cache_key, {
                 'narrative': narrative,
-                'state_update': state_update,
+                'state_update': validated_update,
                 'event_type': intent.get('intent', 'ACTION')
             })
     
     def apply_state_update(self, update: Dict[str, Any]):
         """應用狀態更新"""
+        # 第一步：翻譯層處理（統一入口，將 location_new 轉為 location_id）
+        from validators import normalize_location_update
+        update = normalize_location_update(update)
+
         if not update:
             return
         
@@ -703,10 +711,8 @@ class DaoGame:
 
         # 應用狀態更新
         state_update = {
-            'location_new': validation['destination_name'],
             'location_id': validation['destination_id'],
-            'mp_change': -mp_cost,
-            'tick_increase': time_cost
+            'mp_change': -mp_cost
         }
 
         # 顯示敘述
@@ -714,6 +720,11 @@ class DaoGame:
 
         # 更新狀態
         self.apply_state_update(state_update)
+
+        # 推進時間（方向移動是即時行動，需要手動推進時間）
+        time_result = advance_game_time('MOVE')
+        self.player_state['current_tick'] = time_result['new_tick']
+        print(f"⏱️  {time_result['time_description']}")
 
         # 保存事件
         game_db.log_event(

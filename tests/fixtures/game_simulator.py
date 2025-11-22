@@ -15,6 +15,7 @@ from contextlib import redirect_stdout
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from main import DaoGame
+from world_data import get_location_name
 
 
 class GameSimulator:
@@ -66,7 +67,7 @@ class GameSimulator:
         self.game.player_name = name
         self.game.player_state = {
             "location_id": location_id,
-            "location": self.game._get_location_name(location_id),
+            "location": get_location_name(location_id),
             "tier": tier,
             "hp": hp,
             "max_hp": hp,

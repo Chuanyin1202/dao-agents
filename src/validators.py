@@ -25,13 +25,14 @@ class ConsistencyValidator:
         self.move_keywords = ['來到', '抵達', '進入', '前往', '到達', '走進', '踏入']
         self.skill_keywords = ['學會', '領悟', '習得', '掌握', '悟出']
 
-    def validate(self, narrative: str, state_update: Dict[str, Any]) -> Dict[str, Any]:
+    def validate(self, narrative: str, state_update: Dict[str, Any], player_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         執行驗證
 
         Args:
             narrative: 劇情敘述
             state_update: 狀態更新字典
+            player_state: 玩家當前狀態（用於數值範圍檢查）
 
         Returns:
             {
@@ -91,16 +92,24 @@ class ConsistencyValidator:
                     errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 HP 未扣減 (當前 hp_change: {hp_change})")
                     break
 
-        # 4. 檢查移動
-        new_loc = state_update.get('location_new')
+        # 4. 檢查移動（支援新架構：同時檢查 location_new 和 location_id）
+        new_loc_name = state_update.get('location_new')
+        new_loc_id = state_update.get('location_id')
+
+        # 如果有 location_id，反查中文名稱用於驗證
+        if new_loc_id and not new_loc_name:
+            from world_data import get_location_name
+            new_loc_name = get_location_name(new_loc_id)
+
         for keyword in self.move_keywords:
             if keyword in narrative_text:
                 # 排除「想要」「打算」等意圖詞
                 if self._is_intention_context(narrative_text, keyword):
                     continue
 
-                if not new_loc:
-                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 location_new 為空")
+                # 檢查是否有位置更新（location_new 或 location_id 至少有一個）
+                if not new_loc_name and not new_loc_id:
+                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 location_new/location_id 都為空")
                     break
 
         # 5. 檢查技能學習
@@ -132,6 +141,32 @@ class ConsistencyValidator:
         experience_gained = state_update.get('experience_gained', 0)
         if experience_gained > 500:
             warnings.append(f"⚠️  單次經驗獲得過大: {experience_gained}")
+
+        # 7. 檢查 location_id 是否存在於地圖上
+        if 'location_id' in state_update and state_update['location_id']:
+            from world_data import WORLD_MAP
+            if state_update['location_id'] not in WORLD_MAP:
+                errors.append(f"❌ 嚴重: location_id 不存在於地圖: {state_update['location_id']}")
+
+        # 8. 檢查數值範圍（需要 player_state）
+        if player_state:
+            # 檢查 MP 是否會變負數
+            if 'mp_change' in state_update:
+                current_mp = player_state.get('mp', 0)
+                new_mp = current_mp + state_update['mp_change']
+                if new_mp < 0:
+                    errors.append(f"❌ 嚴重: 法力扣減過多，會變為負數: {current_mp} + {state_update['mp_change']} = {new_mp}")
+
+            # 檢查 HP 是否會變負數或超過上限
+            if 'hp_change' in state_update:
+                current_hp = player_state.get('hp', 0)
+                max_hp = player_state.get('max_hp', 100)
+                new_hp = current_hp + state_update['hp_change']
+
+                if new_hp < 0:
+                    errors.append(f"❌ 嚴重: 生命扣減過多，會變為負數: {current_hp} + {state_update['hp_change']} = {new_hp}")
+                elif new_hp > max_hp:
+                    warnings.append(f"⚠️  生命恢復超過上限: {new_hp} > {max_hp}（將被限制為 {max_hp}）")
 
         return {
             'valid': len(errors) == 0,
@@ -287,9 +322,10 @@ def auto_fix_state(narrative: str, state_update: dict) -> dict:
             print(f"  🔧 自動修復: 添加物品 {items}")
 
     # 修復 HP 扣減（只在有明確數值時修復）
-    if ('受傷' in narrative or '疼痛' in narrative or '吐血' in narrative) and fixed_update.get('hp_change', 0) >= 0:
+    if ('受傷' in narrative or '疼痛' in narrative or '吐血' in narrative or '重傷' in narrative or '失去' in narrative) and fixed_update.get('hp_change', 0) >= 0:
         # 嘗試從敘述中提取傷害數值
-        damage_pattern = r'(?:損失|扣除|減少|失去)(?:了)?(\d+)(?:點)?(?:生命|HP|血量)'
+        # 支援多種表達方式：「失去了 20 點生命」「損失20點生命」「失去20生命」等
+        damage_pattern = r'(?:損失|扣除|減少|失去|扣|減)(?:了)?\s*(\d+)\s*(?:點)?\s*(?:生命|HP|血量|點生命)'
         damage_match = re.search(damage_pattern, narrative)
 
         if damage_match:
