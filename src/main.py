@@ -523,12 +523,12 @@ class DaoGame:
                 if item in self.player_state['inventory']:
                     self.player_state['inventory'].remove(item)
         
-        # 移動位置（同步更新 location 和 location_id）
-        if 'location_new' in update and update['location_new']:
-            self.player_state['location'] = update['location_new']
-            # 如果 update 中有 location_id，也更新它
-            if 'location_id' in update:
-                self.player_state['location_id'] = update['location_id']
+        # 移動位置（只使用 location_id，自動同步 location 中文名）
+        if 'location_id' in update and update['location_id']:
+            self.player_state['location_id'] = update['location_id']
+            # 同步更新中文名稱（用於顯示）
+            from world_data import get_location_name
+            self.player_state['location'] = get_location_name(update['location_id'])
         
         # NPC 關係變更
         if 'npc_relations_change' in update:
@@ -549,7 +549,7 @@ class DaoGame:
         should_save = any([
             update.get('hp_change', 0) < -20,  # 受到重傷
             update.get('items_gained'),  # 獲得物品
-            update.get('location_new'),  # 移動位置
+            update.get('location_id'),  # 移動位置
             update.get('skills_gained'),  # 獲得技能
             update.get('experience_gained', 0) >= 20  # 獲得大量經驗
         ])
@@ -562,7 +562,7 @@ class DaoGame:
     def show_quick_commands(self):
         """顯示快捷命令"""
         # 獲取當前位置的 NPC
-        npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', self.player_state.get('location', 'qingyun_foot')))
+        npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
 
         print("\n【快捷命令】")
         print("  m=移動  a=攻擊  t=對話  c=修煉  i=背包  l=查看周圍")
@@ -722,7 +722,7 @@ class DaoGame:
 
         # 特殊處理：攻擊命令（需要驗證目標）
         if user_input == 'a':
-            npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', self.player_state.get('location', 'qingyun_foot')))
+            npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
             if not npcs_here:
                 print("\n[提示] 附近沒有可攻擊的目標。")
                 return None  # 返回 None 表示跳過
@@ -732,7 +732,7 @@ class DaoGame:
         # 處理 NPC 對話快捷命令（t1, t2, t3）
         if user_input.startswith('t') and len(user_input) == 2 and user_input[1].isdigit():
             npc_index = int(user_input[1]) - 1
-            npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', self.player_state.get('location', 'qingyun_foot')))
+            npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
 
             if 0 <= npc_index < len(npcs_here):
                 npc = npcs_here[npc_index]
