@@ -1,0 +1,184 @@
+{
+  "npcs": [
+    {
+      "id": "npc_001_master_qingyun",
+      "name": "玄靈子",
+      "title": "青雲門掌門",
+      "tier": 5.5,
+      "tier_name": "度劫期",
+      "location": "青雲峰主殿",
+      "personality": "威嚴冷漠，言詞簡潔，但暗藏柔腸。對有膽識的弟子另眼相看。",
+      "lore": "曾經天選之人，三百年前在「昆侖秘戰」中身受重傷，留下隱疾，導致修為停滯。現在的目標是找到'心悟仙草'治癒內傷。",
+      "combat_style": "仙劍流派，絕招『乾坤一劍』可開天裂地，但因舊傷發作後威力大減。",
+      "dialogue_style": "古文夾禪理，喜歡點化而不直言",
+      "likes": ["有膽識的人", "古劍"],
+      "dislikes": ["懦夫", "叛徒"],
+      "relations": {
+        "player_default_affinity": -15,
+        "trigger_topics": ["修仙之道", "青雲秘聞", "昆侖戰役"]
+      }
+    },
+    {
+      "id": "npc_002_elder_herb",
+      "name": "靈妙真人",
+      "title": "藥王谷長老",
+      "tier": 4.8,
+      "tier_name": "化神期",
+      "location": "靈草堂",
+      "personality": "溫和親切，對所有人都很耐心。但對那些浪費天材地寶的人會嚴厲批評。",
+      "lore": "花費千年研究藥植，培養了數千種靈藥。年輕時曾是青雲門的劍仙，後轉向修藥。傳聞她有起死回生的秘方。",
+      "combat_style": "不主動戰鬥，但毒藥和解藥堪稱絕世。",
+      "dialogue_style": "溫柔但知識淵博，常說冷笑話",
+      "likes": ["尊重生命的人", "稀有草藥", "提問"],
+      "dislikes": ["傲慢", "浪費"],
+      "relations": {
+        "player_default_affinity": 10,
+        "trigger_topics": ["藥學", "靈草", "治癒"]
+      }
+    },
+    {
+      "id": "npc_003_merchant_fang",
+      "name": "方三塊",
+      "title": "雜貨商",
+      "tier": 1.5,
+      "tier_name": "練氣期",
+      "location": "青雲門·市集",
+      "personality": "精於算盤，精於吹牛，對一切商機敏感。卻有俠義之心，常幫助窮困弟子。",
+      "lore": "曾是盜賊，後金盆洗手做了商人。手上掌握著許多情報，包括一些宗門不敢講的秘密。",
+      "combat_style": "用錢買手下，自己戰鬥力很弱。",
+      "dialogue_style": "市儈語氣，但交情深時會露出真性情",
+      "likes": ["賺錢", "交易", "故事", "仗義的人"],
+      "dislikes": ["詐騙", "霸權"],
+      "relations": {
+        "player_default_affinity": 5,
+        "trigger_topics": ["商業", "消息", "交易"]
+      }
+    },
+    {
+      "id": "npc_004_disciple_red",
+      "name": "紅藝",
+      "title": "青雲門弟子（內門）",
+      "tier": 2.2,
+      "tier_name": "築基期",
+      "location": "青雲峰·修煉殿",
+      "personality": "驕傲自大，因為天賦好而瞧不起其他人。但如果你打敗她，她會尊重你。",
+      "lore": "宗門天才弟子，被掌門親自指導。不知道自己已被選為下任掌門候選人。",
+      "combat_style": "『火鳳功』，攻擊力強但防禦薄弱。",
+      "dialogue_style": "傲慢尖銳，但會在重傷時流露脆弱",
+      "likes": ["強者", "決鬥", "被認可"],
+      "dislikes": ["弱者", "拍馬屁"],
+      "relations": {
+        "player_default_affinity": -10,
+        "trigger_topics": ["修為", "天才", "決戰"]
+      }
+    },
+    {
+      "id": "npc_005_hermit_stone",
+      "name": "石長眉",
+      "title": "隱士",
+      "tier": 3.9,
+      "tier_name": "元嬰期",
+      "location": "青雲山·懸崖草屋",
+      "personality": "沉默寡言，但眼神深邃如星空。對有『道心』的人會熱心指點。",
+      "lore": "曾是青雲門長老，但在一場政治鬥爭中被陷害，憤而隱居。現在研究『天外隕石』的秘密。",
+      "combat_style": "『九星步』和『隕石劍』，道法精妙至極，但很少出手。",
+      "dialogue_style": "每句話都有深意，喜歡讓人自己領悟",
+      "likes": ["天道感悟", "古籍"],
+      "dislikes": ["虛偽", "權謀"],
+      "relations": {
+        "player_default_affinity": 0,
+        "trigger_topics": ["修為突破", "道心", "真相"]
+      }
+    },
+    {
+      "id": "npc_006_bard_luna",
+      "name": "月娥",
+      "title": "酒肆歌姬",
+      "tier": 1.8,
+      "tier_name": "練氣期",
+      "location": "青雲鎮·醉仙樓",
+      "personality": "風趣幽默，對每個客人都溫暖相待。但實際上在收集情報。",
+      "lore": "流浪藝人出身，被傳聞她可能是某位失蹤仙子的轉世。有人看過她在月圓之夜現出異光。",
+      "combat_style": "『月光舞』可迷惑敵人，實際很難擊中她。",
+      "dialogue_style": "溫柔調皮，經常開玩笑",
+      "likes": ["故事", "音樂", "真誠"],
+      "dislikes": ["謊言", "冷漠"],
+      "relations": {
+        "player_default_affinity": 5,
+        "trigger_topics": ["傳聞", "秘密", "過去"]
+      }
+    },
+    {
+      "id": "npc_007_demon_cultivator",
+      "name": "黑衣人·無名",
+      "title": "魔門使者",
+      "tier": 4.2,
+      "tier_name": "金丹期",
+      "location": "青雲門·暗處",
+      "personality": "神秘詭譎，似乎在計畫什麼。但對『有潛力』的人反而溫和。",
+      "lore": "來自魔門，目標不明。有傳聞他在尋找『青雲門的叛徒』。",
+      "combat_style": "『黑雲手』和『吞噬劍法』，攻防兼備。",
+      "dialogue_style": "話語不多，但每句都有威脅意味",
+      "likes": ["有野心的人", "力量"],
+      "dislikes": ["正義感泛濫的聖母婊"],
+      "relations": {
+        "player_default_affinity": -20,
+        "trigger_topics": ["魔道", "力量", "背叛"]
+      }
+    },
+    {
+      "id": "npc_008_elder_sword",
+      "name": "劍痴老人",
+      "title": "劍法傳人",
+      "tier": 4.5,
+      "tier_name": "金丹期",
+      "location": "青雲峰·劍道館",
+      "personality": "醉心於劍法研究，對其他事漠不關心。但對有悟性的劍手會毫無保留地傳授。",
+      "lore": "曾與掌門並肩作戰，但選擇隱居於劍道館。相傳他正在創造新的終極劍招。",
+      "combat_style": "『十萬劍》，一人如千軍萬馬。",
+      "dialogue_style": "簡短粗糙，但充滿激情",
+      "likes": ["劍", "懂劍的人", "決鬥"],
+      "dislikes": ["邪道", "懦弱"],
+      "relations": {
+        "player_default_affinity": -5,
+        "trigger_topics": ["劍法", "決鬥", "武道"]
+      }
+    },
+    {
+      "id": "npc_009_priest_compassion",
+      "name": "慈悲和尚",
+      "title": "佛門弟子（駐紮於青雲門）",
+      "tier": 3.5,
+      "tier_name": "元嬰期",
+      "location": "青雲門·靜心寺",
+      "personality": "性格溫和，對所有生靈都充滿慈悲。但遇到邪魔會毫不留情。",
+      "lore": "來自極樂寺，在青雲門傳教。暗中與掌門合作監控魔門勢力。",
+      "combat_style": "『如來神掌』和『金光護盾』，防禦無敵。",
+      "dialogue_style": "佛門用語，但不矯情",
+      "likes": ["善心", "修行者", "保護弱者"],
+      "dislikes": ["殺生", "貪念"],
+      "relations": {
+        "player_default_affinity": 15,
+        "trigger_topics": ["人生意義", "修行", "善惡"]
+      }
+    },
+    {
+      "id": "npc_010_love_interest",
+      "name": "云汐",
+      "title": "青雲門弟子（外門）",
+      "tier": 1.3,
+      "tier_name": "練氣期",
+      "location": "青雲門·山腳水潭",
+      "personality": "溫柔善良，對所有人都很照顧。有秘密的憂傷。",
+      "lore": "新入門弟子，出身平民，被長老看中。暗戀著某人但不敢說出來。傳聞她與掌門有某種牽絆。",
+      "combat_style": "『月光劍』柔和但堅韌，是典型的防禦型劍手。",
+      "dialogue_style": "溫柔關切，但有時會露出堅毅",
+      "likes": ["幫助他人", "自然", "誠心"],
+      "dislikes": ["殘忍", "虛偽"],
+      "relations": {
+        "player_default_affinity": 20,
+        "trigger_topics": ["夢想", "未來", "感情"]
+      }
+    }
+  ]
+}
