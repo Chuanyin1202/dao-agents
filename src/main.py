@@ -13,6 +13,13 @@ from agent import (
     agent_director, generate_opening_scene,
     call_logic_and_drama_parallel
 )
+from world_map import (
+    validate_movement, should_trigger_random_event,
+    get_location_context, get_simple_movement_narrative,
+    get_location_mp_cost, get_location_time_cost
+)
+from world_data import get_location_name, normalize_direction
+from time_engine import advance_game_time, load_game_time
 
 class DaoGame:
     def __init__(self):
@@ -40,12 +47,17 @@ class DaoGame:
         hp_bar = "█" * (state['hp'] // 10) + "░" * ((state['max_hp'] - state['hp']) // 10)
         mp_bar = "█" * (state['mp'] // 5) + "░" * ((state['max_mp'] - state['mp']) // 5)
 
+        # 獲取時間描述
+        from time_engine import get_current_game_time
+        time_info = get_current_game_time()
+
         print(f"""
 ┌─ 【{state.get('name', '未命名')}】─────────────────────┐
 │ 修為: {state.get('tier')} ({state.get('level')} 級)  │ 氣運: {state.get('karma')}
 │ HP: {hp_bar}  [{state.get('hp')}/{state.get('max_hp')}]
 │ 法力: {mp_bar}  [{state.get('mp')}/{state.get('max_mp')}]
-│ 位置: {state.get('location')}
+│ 位置: {state.get('location', get_location_name(state.get('location_id', 'qingyun_foot')))}
+│ 時間: {time_info['description']}
 │ 背包: {', '.join(state.get('inventory', [])[:3])}{'...' if len(state.get('inventory', [])) > 3 else ''}
 └────────────────────────────────────────────┘
 """)
@@ -173,16 +185,20 @@ class DaoGame:
         """讀取存檔"""
         print("\n【讀取存檔】")
         player_name = input("輸入角色名稱: ").strip()
-        
+
         result = game_db.load_player(player_name)
         if not result:
             print("[ERROR] 找不到該角色")
             return False
-        
+
         self.player_id = result['player_id']
         self.player_state = result['state']
         self.is_new_game = False
-        
+
+        # 載入時間系統
+        current_tick = self.player_state.get('current_tick', 0)
+        load_game_time(current_tick)
+
         print(f"✓ 讀取成功！歡迎回來, {player_name}!")
         return True
     
@@ -294,18 +310,90 @@ class DaoGame:
                 print(f"\n{cached_result['narrative']}")
                 return
 
+        # 【新增】移動意圖的特殊處理（地圖驗證）
+        if intent_type == 'MOVE':
+            direction = normalize_direction(intent.get('target', ''))
+            current_location_id = self.player_state.get('location_id', 'qingyun_foot')
+
+            # 驗證移動
+            validation = validate_movement(
+                current_location_id,
+                direction if direction else intent.get('target', ''),
+                self.player_state.get('tier', 1.0)
+            )
+
+            if not validation['valid']:
+                # 非法移動，直接返回錯誤
+                print(f"\n❌ {validation['reason']}")
+                return
+
+            # 合法移動，檢查是否觸發事件
+            trigger_event = should_trigger_random_event(
+                validation['destination_id'],
+                self.player_state.get('karma', 0)
+            )
+
+            if not trigger_event:
+                # 簡單移動，不調用 AI（極速響應）
+                narrative = get_simple_movement_narrative(
+                    current_location_id,
+                    validation['destination_id'],
+                    direction if direction else intent.get('target', '')
+                )
+
+                # 計算消耗
+                mp_cost = get_location_mp_cost(current_location_id, validation['destination_id'])
+                time_cost = get_location_time_cost(current_location_id, validation['destination_id'])
+
+                state_update = {
+                    'hp_change': 0,
+                    'mp_change': -mp_cost,
+                    'karma_change': 0,
+                    'items_gained': [],
+                    'location_new': validation['destination_name'],
+                    'experience_gained': 0,
+                }
+
+                # 更新位置 ID
+                self.player_state['location_id'] = validation['destination_id']
+                self.player_state['location'] = validation['destination_name']
+
+                # 推進時間
+                time_result = advance_game_time('MOVE')
+                self.player_state['current_tick'] = time_result['new_tick']
+
+                self.apply_state_update(state_update)
+                print(f"\n{narrative}")
+                print(f"⏱️  {time_result['time_description']}")
+
+                # 記錄事件
+                game_db.log_event(
+                    self.player_id,
+                    validation['destination_name'],
+                    'MOVE',
+                    narrative[:150]
+                )
+                return
+
+            # 有隨機事件，繼續正常流程（會調用 Drama）
+            print(f"\n✨ 在前往 {validation['destination_name']} 的路上，發生了一些事...")
+
         # 查詢目標 NPC
         target_npc = None
         if intent.get('target'):
             target_npc = npc_manager.get_npc(intent['target']) or \
                         npc_manager.get_npc_by_name(intent['target'])
 
-        # 第 2 步：邏輯 + 戲劇（平行調用，帶上下文）
+        # 構建地圖上下文（傳遞給 Logic Agent）
+        current_location_id = self.player_state.get('location_id', 'qingyun_foot')
+        world_map_context = get_location_context(current_location_id)
+
+        # 第 2 步：邏輯 + 戲劇（平行調用，帶上下文 + 地圖約束）
         if config.DEBUG:
             print("\n⏳ 平行調用邏輯派和戲劇派...")
 
         logic_report, drama_proposal = call_logic_and_drama_parallel(
-            self.player_state, intent, target_npc, recent_events  # ← 傳遞上下文
+            self.player_state, intent, target_npc, recent_events, world_map_context  # ← 傳遞地圖約束
         )
 
         # 顯示 Agent 辯論過程（核心特色）
@@ -373,9 +461,12 @@ class DaoGame:
                 if item in self.player_state['inventory']:
                     self.player_state['inventory'].remove(item)
         
-        # 移動位置
+        # 移動位置（同步更新 location 和 location_id）
         if 'location_new' in update and update['location_new']:
             self.player_state['location'] = update['location_new']
+            # 如果 update 中有 location_id，也更新它
+            if 'location_id' in update:
+                self.player_state['location_id'] = update['location_id']
         
         # NPC 關係變更
         if 'npc_relations_change' in update:

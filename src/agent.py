@@ -104,8 +104,10 @@ def agent_observer(player_input: str, recent_events: list = None) -> Dict[str, A
             context_text += f"{i}. {event['description'][:80]}...\n"
         context_text += "\n"
 
-    user_message = f"""{context_text}【玩家當前輸入】
+    # 使用分隔符防止 Prompt Injection
+    user_message = f"""{context_text}【玩家輸入開始】
 {player_input}
+【玩家輸入結束】
 
 請基於上下文理解玩家意圖。如果玩家的輸入指向「最近發生的事情」中的元素（如人物、物品、事件），請在 target 欄位中標註。"""
 
@@ -132,15 +134,17 @@ def agent_observer(player_input: str, recent_events: list = None) -> Dict[str, A
 
 def agent_logic(player_state: Dict[str, Any], intent: Dict[str, Any],
                 npc: Optional[Dict[str, Any]] = None,
-                recent_events: list = None) -> str:
+                recent_events: list = None,
+                world_map_context: str = None) -> str:
     """
-    邏輯分析者 Agent - 規則驗證（帶上下文記憶）
+    邏輯分析者 Agent - 規則驗證（帶上下文記憶 + 地圖約束）
 
     Args:
         player_state: 玩家狀態
         intent: 意圖字典
         npc: 目標 NPC
         recent_events: 最近事件記錄
+        world_map_context: 地圖約束信息（可行方向、境界要求等）
 
     輸出：分析報告（文本）
     """
@@ -174,7 +178,11 @@ def agent_logic(player_state: Dict[str, Any], intent: Dict[str, Any],
         context += "\n【最近發生的事情】\n"
         for event in reversed(recent_events):
             context += f"- {event['description'][:100]}...\n"
-    
+
+    # 添加地圖約束（如果提供）
+    if world_map_context:
+        context += f"\n【地圖資訊】\n{world_map_context}\n"
+
     response = call_gpt(
         system_prompt=SYSTEM_LOGIC,
         user_message=context,
@@ -340,15 +348,17 @@ def generate_opening_scene(player_name: str) -> str:
 def call_logic_and_drama_parallel(player_state: Dict[str, Any],
                                   intent: Dict[str, Any],
                                   npc: Optional[Dict[str, Any]] = None,
-                                  recent_events: list = None) -> Tuple[str, str]:
+                                  recent_events: list = None,
+                                  world_map_context: str = None) -> Tuple[str, str]:
     """
-    並行調用 Logic 和 Drama（帶上下文記憶）
+    並行調用 Logic 和 Drama（帶上下文記憶 + 地圖約束）
 
     Args:
         player_state: 玩家狀態
         intent: 意圖字典
         npc: 目標 NPC
         recent_events: 最近事件記錄
+        world_map_context: 地圖約束信息
 
     Returns:
         (logic_report, drama_proposal)
@@ -356,7 +366,7 @@ def call_logic_and_drama_parallel(player_state: Dict[str, Any],
     import concurrent.futures
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        logic_future = executor.submit(agent_logic, player_state, intent, npc, recent_events)
+        logic_future = executor.submit(agent_logic, player_state, intent, npc, recent_events, world_map_context)
         drama_future = executor.submit(agent_drama, player_state, intent, npc, recent_events)
         
         logic_report = logic_future.result()

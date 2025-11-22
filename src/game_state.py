@@ -14,15 +14,35 @@ class GameStateManager:
         self.init_database()
     
     def init_database(self):
-        """初始化 SQLite 數據庫"""
+        """初始化 SQLite 數據庫（破壞性升級：加入 location_id, tier, current_tick）"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        # 玩家表
+
+        # 檢查是否需要遷移（如果舊表存在但沒有 location_id 欄位）
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='players'")
+        table_exists = cursor.fetchone() is not None
+
+        if table_exists:
+            # 檢查是否已有新欄位
+            cursor.execute("PRAGMA table_info(players)")
+            columns = [col[1] for col in cursor.fetchall()]
+
+            if 'location_id' not in columns:
+                # 需要遷移：刪除舊表，創建新表
+                if config.DEBUG:
+                    print("[DB] ⚠️  偵測到舊版數據庫，進行破壞性遷移...")
+                cursor.execute("DROP TABLE IF EXISTS players")
+                cursor.execute("DROP TABLE IF EXISTS event_logs")
+                cursor.execute("DROP TABLE IF EXISTS npc_relations")
+
+        # 玩家表（新版）
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS players (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
+                location_id TEXT NOT NULL DEFAULT 'qingyun_foot',
+                tier REAL NOT NULL DEFAULT 1.0,
+                current_tick INTEGER NOT NULL DEFAULT 0,
                 state_json TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_save_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,18 +89,30 @@ class GameStateManager:
         # 深拷貝初始狀態（確保 list/dict 獨立）
         player_state = copy.deepcopy(config.INITIAL_PLAYER_STATE)
         player_state["name"] = player_name
-        
+
+        # 確保初始位置使用 location_id
+        from world_data import get_starting_location
+        initial_location_id = get_starting_location()
+        player_state["location_id"] = initial_location_id
+        player_state["current_tick"] = 0
+
         try:
-            cursor.execute(
-                "INSERT INTO players (name, state_json) VALUES (?, ?)",
-                (player_name, json.dumps(player_state, ensure_ascii=False))
-            )
+            cursor.execute("""
+                INSERT INTO players (name, location_id, tier, current_tick, state_json)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                player_name,
+                initial_location_id,
+                player_state.get("tier", 1.0),
+                0,
+                json.dumps(player_state, ensure_ascii=False)
+            ))
             conn.commit()
             player_id = cursor.lastrowid
-            
+
             if config.DEBUG:
                 print(f"[DB] 創建新玩家: {player_name} (ID: {player_id})")
-            
+
             return {"success": True, "player_id": player_id, "state": player_state}
         except sqlite3.IntegrityError:
             return {"success": False, "error": f"玩家名稱 '{player_name}' 已存在"}
@@ -103,15 +135,31 @@ class GameStateManager:
         return None
     
     def save_player(self, player_id: int, state: Dict[str, Any]) -> bool:
-        """保存玩家狀態"""
+        """保存玩家狀態（同步更新 location_id, tier, current_tick）"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         try:
-            cursor.execute(
-                "UPDATE players SET state_json = ?, last_save_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (json.dumps(state, ensure_ascii=False), player_id)
-            )
+            # 同步獨立欄位
+            location_id = state.get("location_id", "qingyun_foot")
+            tier = state.get("tier", 1.0)
+            current_tick = state.get("current_tick", 0)
+
+            cursor.execute("""
+                UPDATE players
+                SET location_id = ?,
+                    tier = ?,
+                    current_tick = ?,
+                    state_json = ?,
+                    last_save_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (
+                location_id,
+                tier,
+                current_tick,
+                json.dumps(state, ensure_ascii=False),
+                player_id
+            ))
             conn.commit()
             if config.DEBUG:
                 print(f"[DB] 玩家 ID {player_id} 已保存")
