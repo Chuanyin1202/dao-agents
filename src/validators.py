@@ -76,7 +76,7 @@ class ConsistencyValidator:
                     warnings.append(f"⚠️  敘述提到「{keyword}」但 items_lost 為空")
                     break
 
-        # 3. 檢查 HP 變化 (受傷檢查) - 只檢查玩家受傷
+        # 3. 檢查 HP 變化 (受傷檢查) - 雙向檢查
         hp_change = state_update.get('hp_change', 0)
         for keyword in self.hp_loss_keywords:
             if keyword in narrative_text:
@@ -84,12 +84,16 @@ class ConsistencyValidator:
                 if self._is_negative_context(narrative_text, keyword):
                     continue
 
-                # 檢查是否為玩家受傷（而非 NPC）
-                if not self._is_player_subject(narrative_text, keyword):
-                    continue
+                is_player_damaged = self._is_player_subject(narrative_text, keyword)
 
-                if hp_change >= 0:
-                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 HP 未扣減 (當前 hp_change: {hp_change})")
+                # ✅ 玩家受傷但 HP 未扣減
+                if is_player_damaged and hp_change >= 0:
+                    errors.append(f"❌ 嚴重: 敘述提到玩家「{keyword}」但 HP 未扣減 (hp_change: {hp_change})")
+                    break
+
+                # ✅ NPC 受傷但誤扣玩家 HP
+                elif not is_player_damaged and hp_change < 0:
+                    errors.append(f"❌ 嚴重: NPC 受傷但誤扣玩家 HP (hp_change: {hp_change})")
                     break
 
         # 4. 檢查移動（支援新架構：同時檢查 location_new 和 location_id）
@@ -168,6 +172,14 @@ class ConsistencyValidator:
                 elif new_hp > max_hp:
                     warnings.append(f"⚠️  生命恢復超過上限: {new_hp} > {max_hp}（將被限制為 {max_hp}）")
 
+        # 9. 檢測敘述中的疑似未註冊 NPC（警告層級）
+        suspicious_npcs = detect_unregistered_npc_mentions(narrative_text)
+        if suspicious_npcs:
+            warnings.append(f"⚠️  敘述提到疑似未註冊 NPC: {suspicious_npcs}")
+            # 注意：這裡只是警告，不算錯誤
+            # 因為可能是合法的 NPC（如掌門、長老）
+            # 但會提醒開發者檢查
+
         return {
             'valid': len(errors) == 0,
             'errors': errors,
@@ -205,28 +217,67 @@ class ConsistencyValidator:
         - "你受了重傷" → True (玩家)
         - "霜焰獅受了重傷" → False (NPC)
         - "牠身上佈滿傷痕" → False (NPC)
+        - "你一劍刺中霜焰獅，牠痛苦地吼叫" → False (NPC，以最近的主語為準)
         """
+        from keyword_tables import NPC_INDICATORS, PLAYER_INDICATORS
+
         keyword_pos = text.find(keyword)
         if keyword_pos == -1:
             return False
 
-        # 向前檢查 20 個字符
-        context_start = max(0, keyword_pos - 20)
+        # 向前檢查 30 個字符（擴大以涵蓋更多上下文）
+        context_start = max(0, keyword_pos - 30)
         context_before = text[context_start:keyword_pos]
 
-        # NPC 指示詞（如果出現這些，說明不是玩家）
-        npc_indicators = ['牠', '他', '她', '它', '靈獸', '敵人', '師兄', '師姐', '長老', '弟子',
-                         '霜焰獅', '妖獸', '魔獸', '對手', '修士', '獸', '人', '獅']
+        # ✅ 檢查關鍵詞後文（用於「受傷的靈獸」這類形容詞修飾句式）
+        context_after = text[keyword_pos:keyword_pos + 10]
 
+        # ✅ 最優先：檢查是否有「XXX受傷」或「受傷的XXX」句式
+        npc_indicator_words = ['靈獸', '妖獸', '魔獸', '野獸', '師兄', '師姐', '弟子', '對手', '敵人', '修士', '道人']
+
+        # 情況1：檢查前文（如「靈獸受傷」）
+        for npc_word in npc_indicator_words:
+            if npc_word in context_before:
+                npc_pos = context_before.rfind(npc_word)
+                between = context_before[npc_pos + len(npc_word):]
+                # 如果之間沒有明確的分隔符，判定為 NPC 受傷
+                if not any(sep in between for sep in ['。', '，', '！', '？']):
+                    return False  # NPC
+
+        # 情況2：檢查後文（如「受傷的靈獸」）
+        for npc_word in npc_indicator_words:
+            if npc_word in context_after:
+                # 檢查是否是「受傷的XXX」句式
+                if '的' in context_after[:context_after.find(npc_word)]:
+                    return False  # NPC
+
+        # ✅ 次優先：檢查主語代詞
+        primary_npc_pronouns = ['牠', '他', '她', '它']
+        primary_player_pronouns = ['你', '您', '我']
+
+        closest_pronoun = None
+        closest_pos = -1
+
+        for pronoun in primary_npc_pronouns + primary_player_pronouns:
+            pos = context_before.rfind(pronoun)  # 從右往左找（最接近關鍵詞）
+            if pos > closest_pos:
+                closest_pos = pos
+                closest_pronoun = pronoun
+
+        # 根據最近的代詞判斷主語
+        if closest_pronoun in primary_npc_pronouns:
+            return False  # NPC
+        elif closest_pronoun in primary_player_pronouns:
+            return True  # 玩家
+
+        # ✅ 次優先：使用統一的詞表檢查（移除了太寬泛的詞如「人」「獸」）
         # 如果上下文中有 NPC 指示詞，判定為 NPC 受傷
-        for indicator in npc_indicators:
+        for indicator in NPC_INDICATORS:
             if indicator in context_before:
                 return False
 
         # 玩家指示詞（如果出現這些，確認是玩家）
-        player_indicators = ['你', '自己', '你的', '身體', '傷口']
-
-        for indicator in player_indicators:
+        for indicator in PLAYER_INDICATORS:
             if indicator in context_before:
                 return True
 
@@ -350,6 +401,82 @@ def auto_fix_state(narrative: str, state_update: dict) -> dict:
     fixed_update = normalize_location_update(fixed_update)
 
     return fixed_update
+
+
+def detect_unregistered_npc_mentions(narrative: str) -> List[str]:
+    """
+    檢測敘述中是否提到未註冊的 NPC
+
+    Args:
+        narrative: 劇情敘述文本
+
+    Returns:
+        可疑的 NPC 提及列表
+    """
+    # 常見 NPC 關鍵詞（這些詞如果出現，需要檢查是否為已註冊 NPC）
+    npc_patterns = [
+        r'(師兄|師姐|師弟|師妹)',
+        r'(修士|道人|道長|老者)',
+        r'(弟子|門人|執事)',
+        r'(白衣少女|侍從|隨從)',
+        r'(掌門|長老)',  # 這些應該註冊
+    ]
+
+    suspicious_mentions = []
+    for pattern in npc_patterns:
+        matches = re.findall(pattern, narrative)
+        suspicious_mentions.extend(matches)
+
+    return list(set(suspicious_mentions))  # 去重
+
+
+def validate_npc_existence(decision: Dict[str, Any],
+                          recent_events: List[Dict[str, Any]] = None) -> Tuple[bool, List[str]]:
+    """
+    驗證 Decision 中的 NPC 是否都已註冊
+
+    Args:
+        decision: Director 輸出的決策 JSON
+        recent_events: 最近的事件記錄（用於判斷合法 NPC）
+
+    Returns:
+        (is_valid, invalid_npcs)
+            - is_valid: 是否所有 NPC 都合法
+            - invalid_npcs: 不合法的 NPC 列表
+    """
+    from npc_manager import npc_manager
+
+    invalid_npcs = []
+
+    # 檢查 npc_relations_change 中的 NPC ID
+    npc_relations = decision.get('state_update', {}).get('npc_relations_change', {})
+    for npc_id in npc_relations.keys():
+        if not npc_manager.get_npc(npc_id):
+            invalid_npcs.append(npc_id)
+
+    # 檢查 narrative 中的 NPC 提及
+    narrative = decision.get('narrative', '')
+    detected_npcs = detect_unregistered_npc_mentions(narrative)
+
+    # 建立最近事件中的合法 NPC 名稱集合
+    recent_npc_names = set()
+    if recent_events:
+        for event in recent_events:
+            npc_id = event.get('npc_involved')
+            if npc_id:
+                npc = npc_manager.get_npc(npc_id)
+                if npc:
+                    recent_npc_names.add(npc['name'])
+
+    # 驗證每個檢測到的 NPC 提及
+    for npc_mention in detected_npcs:
+        # 檢查是否為已註冊 NPC（通過名稱查找）
+        if not npc_manager.get_npc_id_by_name(npc_mention):
+            # 檢查是否在最近事件中出現過
+            if npc_mention not in recent_npc_names:
+                invalid_npcs.append(npc_mention)
+
+    return (len(invalid_npcs) == 0, invalid_npcs)
 
 
 # 全局實例

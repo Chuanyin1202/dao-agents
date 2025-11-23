@@ -63,3 +63,4 @@ logs/
 htmlcov/
 .tox/
 test_results.txt
+test_report.html

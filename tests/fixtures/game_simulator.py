@@ -180,10 +180,22 @@ class GameSimulator:
         return output
 
     def _simulate_command(self, command: str) -> str:
-        """模擬命令處理（簡化版本）"""
-        # 這裡需要根據實際需求實現
-        # 暫時返回簡化結果
-        return f"處理命令: {command}"
+        """
+        模擬命令處理（真實遊戲邏輯）
+
+        調用實際的 process_player_action() 方法
+        如果 mock_ai=True，會使用模擬 AI 回應
+        """
+        output_buffer = StringIO()
+
+        try:
+            with redirect_stdout(output_buffer):
+                # 調用真實遊戲邏輯
+                self.game.process_player_action(command)
+
+            return output_buffer.getvalue()
+        except Exception as e:
+            return f"命令處理錯誤: {e}"
 
     def _diff_states(self, before: Dict, after: Dict) -> Dict:
         """計算狀態差異"""

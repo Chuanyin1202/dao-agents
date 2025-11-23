@@ -61,6 +61,21 @@ class NPCManager:
     def get_all_npcs(self) -> List[Dict[str, Any]]:
         """獲取所有 NPC"""
         return list(self.npcs.values())
+
+    def get_npc_id_by_name(self, name: str) -> Optional[str]:
+        """
+        根據 NPC 名稱查找 ID
+
+        Args:
+            name: NPC 名稱（如 "青雲門掌門"）
+
+        Returns:
+            NPC ID（如 "npc_001_master_qingyun"），如果沒找到則返回 None
+        """
+        for npc_id, npc_data in self.npcs.items():
+            if npc_data.get('name') == name:
+                return npc_id
+        return None
     
     def format_npc_info(self, npc: Dict[str, Any]) -> str:
         """格式化 NPC 信息用於 AI 提示（顯示時轉換為中文）"""

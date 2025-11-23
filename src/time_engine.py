@@ -86,6 +86,61 @@ class TimeEngine:
 
         return f"第 {day} 天 {period}"
 
+    def get_detailed_time_context(self) -> Dict[str, Any]:
+        """
+        獲取詳細的時間上下文（用於 AI 描述）
+
+        Returns:
+            {
+                "hour": 0-23,
+                "period": "深夜/上午/下午/晚上",
+                "season": "春/夏/秋/冬",
+                "day": 遊戲天數,
+                "weather_hint": 天氣提示
+            }
+        """
+        day = (self.current_tick // 144) + 1
+        hour_in_day = (self.current_tick % 144) // 6  # 0-23
+
+        # 時段
+        if 6 <= hour_in_day < 12:
+            period = "上午"
+            period_desc = "陽光明媚"
+        elif 12 <= hour_in_day < 18:
+            period = "下午"
+            period_desc = "日頭正盛"
+        elif 18 <= hour_in_day < 24:
+            period = "晚上"
+            period_desc = "暮色降臨"
+        else:
+            period = "深夜"
+            period_desc = "夜深人靜"
+
+        # 季節（假設 120 天為一個循環：春夏秋冬各 30 天）
+        day_in_year = day % 120
+        if day_in_year <= 30:
+            season = "春"
+            season_desc = "萬物復甦，生機盎然"
+        elif day_in_year <= 60:
+            season = "夏"
+            season_desc = "烈日炎炎，蟬鳴陣陣"
+        elif day_in_year <= 90:
+            season = "秋"
+            season_desc = "秋高氣爽，落葉紛飛"
+        else:
+            season = "冬"
+            season_desc = "寒風凜冽，白雪皚皚"
+
+        return {
+            "hour": hour_in_day,
+            "period": period,
+            "period_desc": period_desc,
+            "season": season,
+            "season_desc": season_desc,
+            "day": day,
+            "weather_hint": f"{season}季{period}，{period_desc}，{season_desc}"
+        }
+
     def calculate_time_cost(self, action_type: str) -> int:
         """
         計算行動消耗的時間
@@ -108,7 +163,8 @@ class TimeEngine:
             "TRADE": 2,       # 交易：2 tick
         }
 
-        return action_costs.get(action_type, 1)  # 預設 1 tick
+        # ✅ Fallback: 未知意圖預設 1 tick，避免 KeyError
+        return action_costs.get(action_type, 1)
 
 
 # 全域時間引擎實例

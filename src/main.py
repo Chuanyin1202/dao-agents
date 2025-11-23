@@ -472,7 +472,27 @@ class DaoGame:
         narrative = decision.get('narrative', '發生了某件奇異的事情。')
         state_update = decision.get('state_update', {})
 
-        from validators import validator, auto_fix_state
+        from validators import validator, auto_fix_state, validate_npc_existence
+
+        # 🛡️ NPC 白名單驗證
+        is_npc_valid, invalid_npcs = validate_npc_existence(decision, recent_events)
+        if not is_npc_valid:
+            if config.DEBUG:
+                print(f"  ⚠️  檢測到未註冊 NPC: {invalid_npcs}")
+
+            # 清理幻覺 NPC
+            for npc_name in invalid_npcs:
+                narrative = narrative.replace(npc_name, "某人")
+
+            # 清理 npc_relations_change
+            if 'npc_relations_change' in state_update:
+                state_update['npc_relations_change'] = {
+                    k: v for k, v in state_update['npc_relations_change'].items()
+                    if k not in invalid_npcs
+                }
+
+            decision['narrative'] = narrative
+            decision['state_update'] = state_update
 
         validation = validator.validate(narrative, state_update, self.player_state)
 
@@ -630,13 +650,15 @@ class DaoGame:
         npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
 
         print("\n【快捷命令】")
-        print("  m=移動  a=攻擊  t=對話  c=修煉  i=背包  l=查看周圍")
-
-        # 如果有 NPC，顯示可對話對象
+        # 根據是否有 NPC 動態調整顯示
         if npcs_here:
+            print("  m=移動  a=攻擊  t=對話  c=修煉  i=背包  l=查看周圍")
             print("\n【附近的 NPC】")
             for i, npc in enumerate(npcs_here[:3], 1):  # 最多顯示 3 個
                 print(f"  t{i} - 與 {npc['name']} 對話")
+        else:
+            # 沒有 NPC 時，不顯示 t 和 a
+            print("  m=移動  c=修煉  i=背包  l=查看周圍")
 
         print("\n  💡 或輸入完整命令（如：\"我要去靈草堂\"）")
 
@@ -783,6 +805,16 @@ class DaoGame:
             'i': "查看我的背包",
             'l': "我要查看周圍環境"
         }
+
+        # 處理單獨的 t 命令（對話）
+        if user_input == 't':
+            npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
+            if not npcs_here:
+                print("\n[提示] 這裡沒有人可以對話。")
+                return None  # 跳過此回合
+            else:
+                # 如果有 NPC，默認與第一個對話
+                return f"我要和{npcs_here[0]['name']}對話"
 
         # 處理基礎快捷命令
         if user_input in shortcuts:

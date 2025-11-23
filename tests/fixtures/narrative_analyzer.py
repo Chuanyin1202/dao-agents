@@ -134,6 +134,11 @@ class NarrativeAnalyzer:
                     warnings.append(
                         f"劇情暗示傷害為 {damage_hint}，但實際 hp_change={hp_change}"
                     )
+            # ✅ 新增：NPC 受傷但誤扣玩家 HP
+            elif not is_player_damaged and hp_change < 0:
+                errors.append(
+                    f"劇情提到 NPC 受傷，但誤扣玩家 HP (hp_change={hp_change})"
+                )
 
         # 檢查是否有未解釋的 HP 變化
         if actual_hp_change < 0 and not mentions_damage:
@@ -248,25 +253,71 @@ class NarrativeAnalyzer:
             # 找到關鍵詞位置
             keyword_pos = narrative.find(keyword)
 
-            # 檢查前文（20 個字符）
-            context_start = max(0, keyword_pos - 20)
+            # 檢查前文（擴大到 30 個字符以涵蓋更多上下文）
+            context_start = max(0, keyword_pos - 30)
             context_before = narrative[context_start:keyword_pos]
 
-            # NPC 指示詞
-            npc_indicators = [
-                '牠', '他', '她', '它', '靈獸', '敵人', '師兄', '師姐',
-                '長老', '弟子', '霜焰獅', '妖獸', '魔獸', '對手', '修士',
-                '獸', '人', '獅', '虎', '狼', '蛇', '龍', '鳳'
+            # ✅ 檢查關鍵詞後文（用於「受傷的靈獸」這類形容詞修飾句式）
+            context_after = narrative[keyword_pos:keyword_pos + 10]
+
+            # ✅ 最優先：檢查是否有「XXX受傷」或「受傷的XXX」句式
+            npc_indicator_words = ['靈獸', '妖獸', '魔獸', '野獸', '師兄', '師姐', '弟子', '對手', '敵人', '修士', '道人']
+
+            # 情況1：檢查前文（如「靈獸受傷」）
+            for npc_word in npc_indicator_words:
+                if npc_word in context_before:
+                    npc_pos = context_before.rfind(npc_word)
+                    between = context_before[npc_pos + len(npc_word):]
+                    # 如果之間沒有明確的分隔符，判定為 NPC 受傷
+                    if not any(sep in between for sep in ['。', '，', '！', '？']):
+                        return False  # NPC
+
+            # 情況2：檢查後文（如「受傷的靈獸」）
+            for npc_word in npc_indicator_words:
+                if npc_word in context_after:
+                    # 檢查是否是「受傷的XXX」句式
+                    if '的' in context_after[:context_after.find(npc_word)]:
+                        return False  # NPC
+
+            # ✅ 次優先：檢查主語代詞
+            primary_npc_pronouns = ['牠', '他', '她', '它']
+            primary_player_pronouns = ['你', '您', '我']
+
+            # 找出所有代詞的位置（離關鍵詞最近的）
+            closest_pronoun = None
+            closest_pos = -1
+
+            for pronoun in primary_npc_pronouns + primary_player_pronouns:
+                pos = context_before.rfind(pronoun)  # 從右往左找（最接近關鍵詞）
+                if pos > closest_pos:
+                    closest_pos = pos
+                    closest_pronoun = pronoun
+
+            # 根據最近的代詞判斷主語
+            if closest_pronoun in primary_npc_pronouns:
+                return False  # NPC
+            elif closest_pronoun in primary_player_pronouns:
+                return True  # 玩家
+
+            # ✅ 次要檢查：NPC 角色名稱和物種（較低優先級）
+            secondary_npc_indicators = [
+                '師兄', '師姐', '長老', '弟子',
+                '修士', '道人', '道長', '老者', '門人', '執事',
+                '霜焰獅', '妖獸', '魔獸', '對手', '靈獸', '敵人',
+                '白衣少女', '侍從', '隨從',
             ]
 
-            for indicator in npc_indicators:
+            for indicator in secondary_npc_indicators:
                 if indicator in context_before:
                     return False  # NPC 是主語
 
-            # 玩家指示詞
-            player_indicators = ['你', '自己', '你的', '身體', '傷口', '雙手']
+            # ✅ 次要檢查：玩家身體部位/感受（較低優先級）
+            secondary_player_indicators = [
+                '你的', '身體', '傷口', '體內', '心中', '腦海',
+                '靈力', '法力', '丹田', '經脈',
+            ]
 
-            for indicator in player_indicators:
+            for indicator in secondary_player_indicators:
                 if indicator in context_before:
                     return True  # 玩家是主語
 
@@ -324,12 +375,12 @@ class NarrativeAnalyzer:
             傷害數值（正數），如果未找到則返回 None
         """
         damage_patterns = [
-            r'失去(?:了)?(\d+)(?:點)?(?:生命|HP|血量)',
-            r'損失(?:了)?(\d+)(?:點)?(?:生命|HP|血量)',
-            r'扣除(?:了)?(\d+)(?:點)?(?:生命|HP|血量)',
-            r'減少(?:了)?(\d+)(?:點)?(?:生命|HP|血量)',
-            r'受到(?:了)?(\d+)(?:點)?(?:傷害|損傷)',
-            r'造成(?:了)?(\d+)(?:點)?(?:傷害)',
+            r'失去(?:了)?\s*(\d+)\s*(?:點)?\s*(?:生命|HP|血量)',
+            r'損失(?:了)?\s*(\d+)\s*(?:點)?\s*(?:生命|HP|血量)',
+            r'扣除(?:了)?\s*(\d+)\s*(?:點)?\s*(?:生命|HP|血量)',
+            r'減少(?:了)?\s*(\d+)\s*(?:點)?\s*(?:生命|HP|血量)',
+            r'受到(?:了)?\s*(\d+)\s*(?:點)?\s*(?:傷害|損傷)',
+            r'造成(?:了)?\s*(\d+)\s*(?:點)?\s*(?:傷害)',
         ]
 
         for pattern in damage_patterns:

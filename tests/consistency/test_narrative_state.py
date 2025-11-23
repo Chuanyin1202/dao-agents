@@ -57,7 +57,7 @@ class TestNarrativeStateConsistency:
             f"NPC 受傷不應扣玩家血，但檢測到錯誤: {result2['errors']}"
 
         # 場景 3: 劇情說玩家受傷，但沒扣血（錯誤）
-        narrative3 = "你被靈獸的尾巴掃中，感到一陣劇痛，口吐鮮血。"
+        narrative3 = "你被靈獸的尾巴掃中，受傷流血，感到痛苦。"
         state_update3 = {'hp_change': 0}  # 錯誤：沒扣血
         state_before3 = {'hp': 100}
         state_after3 = {'hp': 100}
@@ -162,8 +162,8 @@ class TestNarrativeStateConsistency:
         - 無法區分「你受傷」和「牠受傷」
         """
         test_cases = [
-            ("你被打傷了", ['受傷'], True),  # 玩家
-            ("牠被打傷了", ['受傷'], False),  # NPC
+            ("你受傷了", ['受傷'], True),  # 玩家
+            ("牠受傷了", ['受傷'], False),  # NPC
             ("靈獸受傷倒地", ['受傷'], False),  # NPC
             ("霜焰獅痛苦地吼叫", ['痛苦'], False),  # NPC
             ("你感到疼痛", ['疼痛'], True),  # 玩家

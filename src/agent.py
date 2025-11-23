@@ -223,22 +223,76 @@ def agent_drama(player_state: Dict[str, Any], intent: Dict[str, Any],
     if config.DEBUG:
         print(f"\n【戲劇派】正在編織故事...")
 
+    # 獲取當前地點的事件池（限制 AI 可用的 NPC 和物品）
+    from event_pools import get_available_npcs, get_available_items
+    from npc_manager import npc_manager
+    from time_engine import get_time_engine
+
+    location_id = player_state.get('location_id', 'qingyun_foot')
+
+    # 獲取允許的 NPC
+    allowed_npc_ids = get_available_npcs(location_id)
+    allowed_npc_names = []
+    for npc_id in allowed_npc_ids:
+        npc_data = npc_manager.get_npc(npc_id)
+        if npc_data:
+            allowed_npc_names.append(npc_data['name'])
+
+    # 獲取允許的物品
+    allowed_items = get_available_items(location_id)
+
+    # 獲取時間/天氣上下文
+    time_engine = get_time_engine()
+    time_context = time_engine.get_detailed_time_context()
+
     context = f"""
 場景背景：
 - 玩家: {player_state.get('name')} (修為 {player_state.get('tier')})
 - 位置: {player_state.get('location')}
 - 目標行動: {intent.get('intent')}
 
+【環境氛圍】
+- 時間: 第 {time_context['day']} 天 {time_context['period']}（{time_context['hour']}:00 左右）
+- 季節: {time_context['season']}季
+- 天氣氛圍: {time_context['weather_hint']}
+⚠️ 請在場景描述中融入時間和季節的氛圍！
+
 玩家背景：
 - 氣運值: {player_state.get('karma')}
 - 當前心境: 新手充滿好奇心
+
+【🚨 當前地點事件池 - 只能使用以下內容】
+- 允許出現的 NPC：{allowed_npc_names if allowed_npc_names else '無（此地點沒有 NPC）'}
+- 允許獲得的物品：{allowed_items if allowed_items else '無特殊物品'}
+
+⚠️ 重要：只能使用上述 NPC 和物品！不能創造新的角色或物品！
 """
 
     if npc:
+        # 計算好感度等級
+        affinity = npc.get('affinity', 0)
+        if affinity < 20:
+            affinity_level = "陌生（0-19）"
+            relation_tips = "對話應客氣但疏離、公式化"
+        elif affinity < 50:
+            affinity_level = "熟人（20-49）"
+            relation_tips = "對話應友善、願意交談"
+        elif affinity < 80:
+            affinity_level = "好友（50-79）"
+            relation_tips = "對話應親切、主動關心"
+        else:
+            affinity_level = "摯友（80-100）"
+            relation_tips = "對話應親密、毫無保留"
+
         context += f"""
 遭遇 NPC: {npc.get('name')} ({npc.get('title')})
 性格特徵: {npc.get('personality')}
 背景故事: {npc.get('lore')}
+
+【NPC 與玩家的關係】
+- 好感度: {affinity} ({affinity_level})
+- 對話風格指引: {relation_tips}
+- 玩家當前物品: {player_state.get('inventory', [])}（NPC 可能會提及這些物品）
 """
 
     # 添加劇情連貫性提示（最重要！）
@@ -341,27 +395,24 @@ def agent_director(player_state: Dict[str, Any], logic_report: str,
 
 def generate_opening_scene(player_name: str) -> str:
     """
-    生成開局劇情
+    生成開局劇情（使用固定文本，避免 AI 生成幻覺 NPC）
     """
     if config.DEBUG:
         print(f"\n【敘事大師】正在編織開局場景...")
-    
-    context = f"""
-新弟子名稱: {player_name}
-初始修為: 練氣期 1.0
-初始位置: 青雲門·山腳
 
-請為這位新弟子生成一個引人入勝的開局場景。
-"""
-    
-    response = call_gpt(
-        system_prompt=SYSTEM_OPENING_SCENE,
-        user_message=context,
-        model=config.MODEL_DRAMA,
-        temperature=0.9
-    )
-    
-    return response
+    # 使用固定文本，避免 AI 憑空生成 NPC
+    opening_text = f"""【道·衍 - 修仙之旅】
+
+{player_name}，你剛剛通過青雲門的入門試煉，成為外門弟子。
+掌門在授劍儀式上賜你「布衣」，並告誡你：「修仙之路漫長，需踏實前行。」
+
+你站在青雲門山腳，石階向上延伸，消失在雲霧中。
+遠處傳來修煉的鐘聲，山風徐徐，帶來淡淡的草藥香氣。
+
+天地靈氣在此處匯聚，正是修煉的好時機。
+你感受到體內的靈力開始流動，築基之路就此展開。"""
+
+    return opening_text
 
 
 # 並行調用優化（如果需要加速）

@@ -199,7 +199,7 @@ WORLD_MAP = {
         "id": "qingyun_sword_dojo",
         "name": "青雲門·問劍堂",
         "description": "專門研習劍法的道場，牆上掛滿了名劍。劍痴老人常年在此研究劍道。",
-        "tier_requirement": 1.5,
+        "tier_requirement": 2.0,  # 修正：從 1.5 改為 2.0（只允許整數境界）
         "exits": {
             "south": "qingyun_training_hall",  # 往南 -> 演武場
         },
