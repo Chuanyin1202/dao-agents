@@ -70,7 +70,7 @@ class WorldSettings:
         loc = dict(loc)
         loc.setdefault("allowed_events", list(DEFAULT_ALLOWED_EVENTS))
         loc.setdefault("allowed_item_drops", [])
-        loc.setdefault("allowed_npcs", loc.get("available_npcs", []))
+        loc.setdefault("allowed_npcs", [])
         loc.setdefault("environment_tags", loc.get("features", []))
         loc.setdefault("tags", loc.get("features", []))
         loc.setdefault("lore_facts", [])
@@ -98,12 +98,13 @@ class WorldSettings:
                 errors.append(f"事件池 location_id '{loc_id}' 不存在於 locations")
 
         # treasures 物品是否存在（僅警告，不視為致命錯誤）
-        item_ids = {item.get("id") or item.get("name") for item in self.items}
+        # 統一使用 item_id，建立 id 集合
+        item_ids = {item.get("id") for item in self.items if item.get("id")}
         for event in self.events:
             for treasure in event.get("treasures", []):
-                name = treasure.get("item_id") or treasure.get("item_name")
-                if name and name not in item_ids:
-                    print(f"[world_loader] ⚠️  事件池引用未知物品 '{name}'")
+                item_id = treasure.get("item_id")
+                if item_id and item_id not in item_ids:
+                    print(f"[world_loader] ⚠️  事件池引用未知物品 '{item_id}'")
 
         # DEBUG 模式下直接報錯，否則僅警告
         if errors:
