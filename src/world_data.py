@@ -15,6 +15,9 @@
 - available_npcs: 可能遇到的 NPC ID 列表
 """
 
+from world_loader import WorldSettings
+
+
 WORLD_MAP = {
     # 起點：青雲門山腳
     "qingyun_foot": {
@@ -239,6 +242,14 @@ WORLD_MAP = {
         "safe": True,
     },
 }
+
+# 允許從 JSON 覆寫（若存在 data/locations.json）
+try:  # pragma: no cover - 避免載入失敗中斷
+    _world_settings = WorldSettings()
+    if _world_settings.locations_by_id:
+        WORLD_MAP = _world_settings.locations_by_id
+except Exception as exc:  # 靜默降級，保持原本的內建資料
+    print(f"[world_data] ⚠️  無法從 JSON 載入世界資料，使用內建版本: {exc}")
 
 
 # 方向對照表（用於自然語言解析）

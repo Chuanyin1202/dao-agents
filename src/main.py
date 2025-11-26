@@ -369,6 +369,11 @@ class DaoGame:
                     cached_result['narrative'][:150]
                 )
                 print(f"\n{cached_result['narrative']}")
+
+                # 快取路徑也要推進時間，保持與正常流程一致
+                time_result = advance_game_time(intent.get('intent', 'GENERAL'))
+                self.player_state['current_tick'] = time_result['new_tick']
+                print(f"⏱️  {time_result['time_description']}")
                 return
 
         # 【新增】移動意圖的特殊處理（地圖驗證）
@@ -406,6 +411,12 @@ class DaoGame:
                 # 計算消耗
                 mp_cost = get_location_mp_cost(current_location_id, validation['destination_id'])
                 time_cost = get_location_time_cost(current_location_id, validation['destination_id'])
+
+                # 檢查法力是否足夠
+                current_mp = self.player_state.get('mp', 0)
+                if current_mp < mp_cost:
+                    print(f"\n❌ 法力不足。需要 {mp_cost} 點，當前 {current_mp} 點。")
+                    return
 
                 state_update = {
                     'hp_change': 0,
@@ -471,7 +482,10 @@ class DaoGame:
         narrative = decision.get('narrative', '發生了某件奇異的事情。')
         state_update = decision.get('state_update', {})
 
-        from validators import validator, auto_fix_state, validate_npc_existence
+        from validators import (
+            validator, auto_fix_state, validate_npc_existence,
+            validate_location_rules
+        )
 
         # 🛡️ NPC 白名單驗證
         is_npc_valid, invalid_npcs = validate_npc_existence(decision, recent_events)
@@ -500,6 +514,16 @@ class DaoGame:
             for warning in validation['warnings']:
                 if config.DEBUG:
                     print(f"  {warning}")
+
+        # 地點規則警告（僅提示，不阻擋）
+        loc_warnings = validate_location_rules(
+            intent_type,
+            state_update,
+            self.player_state.get('location_id', 'qingyun_foot'),
+            target_npc.get('id') if target_npc else None
+        )
+        for warning in loc_warnings:
+            print(f"⚠️  {warning}")
 
         # 處理嚴重錯誤（Level 2 & 3）
         if not validation['valid']:

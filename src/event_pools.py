@@ -13,6 +13,8 @@ AI 只能從池中選擇，不能憑空創造
 
 from typing import Dict, List, Any
 
+from world_loader import WorldSettings
+
 
 # 每個地點的事件池定義
 EVENT_POOLS = {
@@ -108,6 +110,22 @@ EVENT_POOLS = {
         "events": []
     }
 }
+
+# 若有 JSON 定義則覆蓋內建事件池
+try:  # pragma: no cover
+    _world_settings = WorldSettings()
+    if _world_settings.events_by_location:
+        EVENT_POOLS = {
+            loc_id: {
+                "npcs": data.get("npcs", []),
+                "random_encounters": data.get("random_encounters", []),
+                "treasures": data.get("treasures", []),
+                "events": data.get("events", []),
+            }
+            for loc_id, data in _world_settings.events_by_location.items()
+        }
+except Exception as exc:
+    print(f"[event_pools] ⚠️  無法從 JSON 載入事件池，使用內建版本: {exc}")
 
 
 def get_event_pool(location_id: str) -> Dict[str, Any]:

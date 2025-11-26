@@ -8,7 +8,7 @@
 - Level 3 (兜底): 重試仍失敗，Regex 強制提取
 """
 
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 import re
 
 
@@ -472,6 +472,42 @@ def validate_npc_existence(decision: Dict[str, Any],
                 invalid_npcs.append(npc_mention)
 
     return (len(invalid_npcs) == 0, invalid_npcs)
+
+
+def validate_location_rules(intent_type: Optional[str],
+                           state_update: Dict[str, Any],
+                           location_id: str,
+                           target_npc_id: Optional[str] = None) -> List[str]:
+    """
+    位置相關的合理性檢查（警告層級）：
+    - 事件類型是否允許
+    - 物品掉落是否在白名單內
+    - NPC 是否允許出現在該地點
+
+    目前僅產生警告，不阻擋流程。
+    """
+    from world_data import get_location_data
+
+    warnings = []
+    loc_data = get_location_data(location_id)
+
+    if not loc_data:
+        return warnings
+
+    allowed_events = loc_data.get("allowed_events")
+    if allowed_events and intent_type and intent_type not in allowed_events:
+        warnings.append(f"事件類型 {intent_type} 在 {loc_data.get('name', location_id)} 不被允許")
+
+    allowed_items = loc_data.get("allowed_item_drops") or []
+    for item in state_update.get("items_gained", []) or []:
+        if allowed_items and item not in allowed_items:
+            warnings.append(f"物品『{item}』不應在 {loc_data.get('name', location_id)} 掉落")
+
+    allowed_npcs = loc_data.get("allowed_npcs") or []
+    if target_npc_id and allowed_npcs and target_npc_id not in allowed_npcs:
+        warnings.append(f"NPC {target_npc_id} 不應出現在 {loc_data.get('name', location_id)}")
+
+    return warnings
 
 
 # 全局實例
