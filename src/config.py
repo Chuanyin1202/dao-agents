@@ -82,7 +82,13 @@ KARMA_MULTIPLIER = 0.01             # 每點氣運 +1% 奇遇機率
 # ============ API 超參數 ============
 API_TIMEOUT = 30
 API_MAX_RETRIES = 3
+API_RETRY_BASE_DELAY = 1.0          # 重試基礎延遲（秒），使用指數退避
 API_TEMPERATURE = 0.8               # Drama 創意度
+
+# ============ 遊戲機制參數 ============
+REST_MP_RECOVERY = 20               # 休息恢復的法力值
+AUTO_SAVE_INTERVAL = 3              # 自動存檔間隔（回合數）
+DEFAULT_MODEL = "gpt-4o-mini"       # 預設 AI 模型
 
 # ============ 調試模式 ============
 # 從環境變數讀取，預設為 False

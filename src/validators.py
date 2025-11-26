@@ -357,14 +357,13 @@ def auto_fix_state(narrative: str, state_update: dict) -> dict:
     Returns:
         修復後的狀態更新
     """
+    from keyword_tables import REGEX_ITEM_GAIN, REGEX_HP_DAMAGE, REGEX_MOVEMENT
+
     fixed_update = state_update.copy()
 
     # 修復物品獲得
     if '獲得' in narrative or '得到' in narrative or '賜予' in narrative:
-        # 匹配「獲得XXX」「得到XXX」「賜予你XXX」等模式
-        # 中文物品名通常 2-6 個字
-        pattern = r'(獲得|得到|撿起|拾取|賜予|授予|取得)(?:了)?(?:你)?(?:一[個件把枚塊顆粒張本份])?([^，。！？\s]{2,6})'
-        matches = re.findall(pattern, narrative)
+        matches = re.findall(REGEX_ITEM_GAIN, narrative)
 
         if matches and not fixed_update.get('items_gained'):
             # 提取第二組（物品名）
@@ -374,10 +373,7 @@ def auto_fix_state(narrative: str, state_update: dict) -> dict:
 
     # 修復 HP 扣減（只在有明確數值時修復）
     if ('受傷' in narrative or '疼痛' in narrative or '吐血' in narrative or '重傷' in narrative or '失去' in narrative) and fixed_update.get('hp_change', 0) >= 0:
-        # 嘗試從敘述中提取傷害數值
-        # 支援多種表達方式：「失去了 20 點生命」「損失20點生命」「失去20生命」等
-        damage_pattern = r'(?:損失|扣除|減少|失去|扣|減)(?:了)?\s*(\d+)\s*(?:點)?\s*(?:生命|HP|血量|點生命)'
-        damage_match = re.search(damage_pattern, narrative)
+        damage_match = re.search(REGEX_HP_DAMAGE, narrative)
 
         if damage_match:
             damage = int(damage_match.group(1))
@@ -388,8 +384,7 @@ def auto_fix_state(narrative: str, state_update: dict) -> dict:
             print(f"  ⚠️  無法自動修復 HP 扣減（敘述中未找到明確數值，且可能是 NPC 受傷）")
 
     # 修復移動（使用翻譯層）
-    move_pattern = r'(來到|抵達|進入|走進|踏入)(?:了)?([^，。！？\s]{2,10})'
-    move_match = re.search(move_pattern, narrative)
+    move_match = re.search(REGEX_MOVEMENT, narrative)
 
     if move_match and not fixed_update.get('location_new') and not fixed_update.get('location_id'):
         destination = move_match.group(2)

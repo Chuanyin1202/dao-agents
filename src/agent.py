@@ -58,39 +58,73 @@ def extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def call_gpt(system_prompt: str, user_message: str, model: str = "gpt-4o-mini",
+def call_gpt(system_prompt: str, user_message: str, model: str = None,
              temperature: float = 0.7) -> str:
-    """通用 GPT 調用函數"""
-    try:
-        if config.VERBOSE_API_CALLS:
-            print(f"\n[API] 使用模型: {model}")
-            print(f"[API] 系統提示長度: {len(system_prompt)} 字")
-            print(f"[API] 用戶消息長度: {len(user_message)} 字")
-        
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
-            temperature=temperature,
-            timeout=config.API_TIMEOUT
-        )
-        
-        result = response.choices[0].message.content
+    """
+    通用 GPT 調用函數（帶重試機制）
 
-        # 檢查 API 返回的內容是否為 None
-        if result is None:
-            print(f"[WARNING] API 返回了 None，可能是內容過濾或其他問題")
-            return ""
+    Args:
+        system_prompt: 系統提示
+        user_message: 用戶消息
+        model: 模型名稱，預設使用 config.DEFAULT_MODEL
+        temperature: 創意度
 
-        if config.VERBOSE_API_CALLS:
-            print(f"[API] 回應長度: {len(result)} 字")
+    Returns:
+        API 回應文本
 
-        return result
-    except Exception as e:
-        print(f"[ERROR] API 調用失敗: {e}")
-        return ""
+    Raises:
+        RuntimeError: 重試耗盡後仍失敗
+    """
+    import time
+
+    model = model or config.DEFAULT_MODEL
+    last_error = None
+
+    for attempt in range(config.API_MAX_RETRIES):
+        try:
+            if config.VERBOSE_API_CALLS:
+                print(f"\n[API] 使用模型: {model}")
+                print(f"[API] 系統提示長度: {len(system_prompt)} 字")
+                print(f"[API] 用戶消息長度: {len(user_message)} 字")
+                if attempt > 0:
+                    print(f"[API] 重試第 {attempt + 1} 次")
+
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=temperature,
+                timeout=config.API_TIMEOUT
+            )
+
+            result = response.choices[0].message.content
+
+            # 檢查 API 返回的內容是否為 None
+            if result is None:
+                print(f"[WARNING] API 返回了 None，可能是內容過濾或其他問題")
+                return ""
+
+            if config.VERBOSE_API_CALLS:
+                print(f"[API] 回應長度: {len(result)} 字")
+
+            return result
+
+        except Exception as e:
+            last_error = e
+            if attempt < config.API_MAX_RETRIES - 1:
+                # 指數退避：1s, 2s, 4s...
+                delay = config.API_RETRY_BASE_DELAY * (2 ** attempt)
+                print(f"[WARNING] API 調用失敗 (嘗試 {attempt + 1}/{config.API_MAX_RETRIES}): {e}")
+                print(f"[INFO] {delay:.1f} 秒後重試...")
+                time.sleep(delay)
+            else:
+                print(f"[ERROR] API 調用失敗，已耗盡所有重試次數: {e}")
+
+    # 所有重試都失敗，返回空字串（保持向後兼容）
+    # 注意：上層代碼需要處理空字串的情況
+    return ""
 
 
 def agent_observer(player_input: str, recent_events: list = None) -> Dict[str, Any]:

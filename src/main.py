@@ -139,8 +139,7 @@ class DaoGame:
             return
 
         # 恢復 MP
-        mp_recovery = 20
-        new_mp = min(current_mp + mp_recovery, max_mp)
+        new_mp = min(current_mp + config.REST_MP_RECOVERY, max_mp)
         actual_recovery = new_mp - current_mp
 
         self.player_state['mp'] = new_mp
@@ -321,19 +320,19 @@ class DaoGame:
             if self.is_direction_input(processed_input):
                 if self.handle_direction_movement(processed_input):
                     turn_count += 1
-                    # 每 3 回合自動存檔
-                    if turn_count % 3 == 0:
+                    # 定期自動存檔
+                    if turn_count % config.AUTO_SAVE_INTERVAL == 0:
                         self.save_game()
                         print(f"[系統] 自動存檔完成（回合 {turn_count}）")
                 continue  # 方向移動已處理完成，跳過 AI 流程
 
             # 遊戲主流程（需要 AI 推理）
             self.process_action(processed_input)
-            
+
             turn_count += 1
 
-            # 每 3 回合自動存檔（降低丟失進度的風險）
-            if turn_count % 3 == 0:
+            # 定期自動存檔（降低丟失進度的風險）
+            if turn_count % config.AUTO_SAVE_INTERVAL == 0:
                 self.save_game()
                 print(f"[系統] 自動存檔完成（回合 {turn_count}）")
     
