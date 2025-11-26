@@ -1,0 +1,301 @@
+{
+  "events": [
+    {
+      "location_id": "qingyun_foot",
+      "npcs": [],
+      "random_encounters": [],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "靈草",
+          "weight": 0.05,
+          "tier_required": 1.0
+        }
+      ],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "遠處傳來鐘聲",
+          "weight": 0.1
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_plaza",
+      "npcs": [],
+      "random_encounters": [
+        {
+          "type": "npc",
+          "npc_id": "npc_004_disciple_red",
+          "weight": 0.2,
+          "tier_range": [1.0, 2.0]
+        }
+      ],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "乾糧",
+          "weight": 0.05
+        }
+      ],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "有弟子在比武切磋",
+          "weight": 0.15
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_herb",
+      "npcs": ["npc_002_elder_herb"],
+      "random_encounters": [],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "靈草",
+          "weight": 0.08
+        },
+        {
+          "type": "item",
+          "item_name": "靈藥",
+          "weight": 0.03
+        }
+      ],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "煉丹爐中傳來藥香",
+          "weight": 0.2
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_library",
+      "npcs": [],
+      "random_encounters": [],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "基礎劍法秘笈",
+          "weight": 0.02
+        }
+      ],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "古籍散發著淡淡靈光",
+          "weight": 0.1
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_inner",
+      "npcs": [],
+      "random_encounters": [],
+      "treasures": [],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "靈氣濃郁，修煉事半功倍",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "location_id": "wildlands_forest",
+      "npcs": [],
+      "random_encounters": [
+        {
+          "type": "beast",
+          "beast_name": "低階靈獸",
+          "weight": 0.25,
+          "tier_range": [1.0, 1.5]
+        }
+      ],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "靈草",
+          "weight": 0.1
+        },
+        {
+          "type": "item",
+          "item_name": "靈藥",
+          "weight": 0.05
+        },
+        {
+          "type": "item",
+          "item_name": "獸皮",
+          "weight": 0.15
+        }
+      ],
+      "events": [
+        {
+          "type": "danger",
+          "description": "聽到遠處傳來獸吼",
+          "weight": 0.2
+        }
+      ]
+    },
+    {
+      "location_id": "nearby_market",
+      "npcs": ["npc_003_merchant_fang"],
+      "random_encounters": [],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "乾糧",
+          "weight": 0.08
+        }
+      ],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "集市人聲鼎沸",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_main_hall",
+      "npcs": ["npc_001_master_qingyun"],
+      "random_encounters": [],
+      "treasures": [],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "香火繚繞，莊嚴肅穆",
+          "weight": 0.2
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_training_hall",
+      "npcs": ["npc_004_disciple_red"],
+      "random_encounters": [],
+      "treasures": [],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "有弟子在練劍",
+          "weight": 0.25
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_cliff",
+      "npcs": ["npc_005_hermit_stone"],
+      "random_encounters": [],
+      "treasures": [],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "雲霧繚繞，仙氣飄渺",
+          "weight": 0.3
+        },
+        {
+          "type": "opportunity",
+          "description": "感受到一絲道韻",
+          "weight": 0.05
+        }
+      ]
+    },
+    {
+      "location_id": "town_tavern",
+      "npcs": ["npc_006_bard_luna"],
+      "random_encounters": [
+        {
+          "type": "npc",
+          "npc_id": "npc_003_merchant_fang",
+          "weight": 0.15,
+          "tier_range": [1.0, 2.0]
+        }
+      ],
+      "treasures": [],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "歌姬的歌聲悠揚動聽",
+          "weight": 0.4
+        },
+        {
+          "type": "gossip",
+          "description": "聽到有人談論江湖秘聞",
+          "weight": 0.2
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_inner_gate",
+      "npcs": [],
+      "random_encounters": [
+        {
+          "type": "npc",
+          "npc_id": "npc_007_demon_cultivator",
+          "weight": 0.1,
+          "tier_range": [2.0, 5.0]
+        }
+      ],
+      "treasures": [],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "守衛巡邏中",
+          "weight": 0.3
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_sword_dojo",
+      "npcs": ["npc_008_elder_sword"],
+      "random_encounters": [],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "基礎劍法秘笈",
+          "weight": 0.05
+        }
+      ],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "劍意瀰漫，寒光閃爍",
+          "weight": 0.35
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_temple",
+      "npcs": ["npc_009_priest_compassion"],
+      "random_encounters": [],
+      "treasures": [],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "梵音陣陣，心境平和",
+          "weight": 0.4
+        }
+      ]
+    },
+    {
+      "location_id": "qingyun_pool",
+      "npcs": ["npc_010_love_interest"],
+      "random_encounters": [],
+      "treasures": [
+        {
+          "type": "item",
+          "item_name": "靈草",
+          "weight": 0.06
+        }
+      ],
+      "events": [
+        {
+          "type": "scenery",
+          "description": "池水泛著靈光，靈氣氤氳",
+          "weight": 0.35
+        }
+      ]
+    }
+  ]
+}

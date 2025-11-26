@@ -1,0 +1,279 @@
+{
+  "locations": [
+    {
+      "id": "qingyun_foot",
+      "name": "青雲門·山腳",
+      "description": "青雲門的入口，石階蜿蜒而上，霧氣繚繞。遠處傳來弟子們修煉的聲音。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "north": "qingyun_plaza",
+        "east": "qingyun_herb"
+      },
+      "event_chance": 0.05,
+      "safe": true,
+      "tags": ["安全區域", "新手友善", "起始點"],
+      "allowed_npcs": [],
+      "allowed_events": ["MOVE", "INSPECT", "CULTIVATE", "REST"],
+      "allowed_item_drops": ["靈草"],
+      "lore_facts": ["新弟子入門必經之路", "石階由開山祖師親手鋪設"],
+      "atmosphere_hints": {
+        "morning": "晨霧繚繞，石階上凝著露珠",
+        "afternoon": "陽光透過樹蔭，斑駁落在石階上",
+        "evening": "夕陽染紅了山腳的石階",
+        "night": "月光照耀，石階泛著銀光"
+      },
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_plaza",
+      "name": "青雲門·外門廣場",
+      "description": "寬闘的練武場，外門弟子們在此切磋武藝。場中央立著一塊巨大的任務告示板。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "south": "qingyun_foot",
+        "north": "qingyun_main_hall",
+        "west": "qingyun_library",
+        "east": "qingyun_training_hall"
+      },
+      "event_chance": 0.1,
+      "safe": true,
+      "tags": ["可以切磋", "任務板", "交流中心"],
+      "allowed_npcs": ["npc_004_disciple_red"],
+      "allowed_events": ["ATTACK", "MOVE", "TALK", "INSPECT", "CULTIVATE", "REST", "TRADE"],
+      "allowed_item_drops": ["乾糧"],
+      "lore_facts": ["每月初一舉辦弟子比武", "告示板上會更新宗門任務"],
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_herb",
+      "name": "青雲門·靈草堂",
+      "description": "藥香四溢的藥堂，架上擺滿了各種靈草和丹藥。一位白髮長老正在煉丹爐前專注工作。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "west": "qingyun_foot"
+      },
+      "event_chance": 0.02,
+      "safe": true,
+      "tags": ["可以購買丹藥", "可以學習煉丹", "藥香瀰漫"],
+      "allowed_npcs": ["npc_002_elder_herb"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "USE_ITEM", "TRADE"],
+      "allowed_item_drops": ["靈草", "靈藥"],
+      "lore_facts": ["宗門所有丹藥皆出自此處", "靈妙真人親自坐鎮"],
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_library",
+      "name": "青雲門·藏經閣",
+      "description": "古老的藏書樓，三層高的閣樓中收藏著宗門秘籍。空氣中瀰漫著古書的氣息。",
+      "tier_requirement": 2.0,
+      "exits": {
+        "east": "qingyun_plaza"
+      },
+      "event_chance": 0.15,
+      "safe": true,
+      "tags": ["可以學習技能", "需要貢獻點", "靈氣濃郁"],
+      "allowed_npcs": [],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "SKILL_USE"],
+      "allowed_item_drops": ["基礎劍法秘笈"],
+      "lore_facts": ["禁止大聲喧嘩", "三樓存放宗門禁術"],
+      "can_invent_details": false
+    },
+    {
+      "id": "qingyun_inner",
+      "name": "青雲門·內門",
+      "description": "內門弟子的修煉聖地，靈氣濃度是外門的三倍。遠處可見幾座獨立的洞府。",
+      "tier_requirement": 2.0,
+      "exits": {
+        "south": "qingyun_plaza",
+        "up": "qingyun_cliff"
+      },
+      "event_chance": 0.08,
+      "safe": true,
+      "tags": ["靈氣濃度 +200%", "修煉速度加成", "內門專屬"],
+      "allowed_npcs": [],
+      "allowed_events": ["MOVE", "INSPECT", "CULTIVATE", "REST"],
+      "allowed_item_drops": [],
+      "lore_facts": ["築基期以上方可進入", "每座洞府都有主人"],
+      "can_invent_details": true
+    },
+    {
+      "id": "wildlands_forest",
+      "name": "靈獸森林",
+      "description": "青雲門外的密林，時常有低階靈獸出沒。樹木高大茂密，陽光難以穿透。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "south": "nearby_market"
+      },
+      "event_chance": 0.2,
+      "safe": false,
+      "tags": ["危險區域", "可能遭遇靈獸", "可以採集靈草"],
+      "allowed_npcs": [],
+      "allowed_events": ["ATTACK", "MOVE", "INSPECT", "USE_ITEM"],
+      "allowed_item_drops": ["靈草", "靈藥", "獸皮"],
+      "lore_facts": ["低階靈獸棲息地", "偶有高階妖獸出沒"],
+      "can_invent_details": true
+    },
+    {
+      "id": "nearby_market",
+      "name": "青雲鎮·集市",
+      "description": "熱鬧的集市，凡人與修仙者混雜其中。各種奇珍異寶在此交易。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "north": "wildlands_forest",
+        "east": "town_tavern"
+      },
+      "event_chance": 0.12,
+      "safe": true,
+      "tags": ["可以交易", "物價便宜", "情報集散地"],
+      "allowed_npcs": ["npc_003_merchant_fang"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "USE_ITEM", "TRADE"],
+      "allowed_item_drops": ["乾糧"],
+      "lore_facts": ["每逢初一十五有大集", "方三塊的攤位最熱鬧"],
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_main_hall",
+      "name": "青雲峰·主殿",
+      "description": "巍峨的主殿，供奉著青雲門歷代祖師牌位。掌門平日在此處理宗門事務。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "south": "qingyun_plaza"
+      },
+      "event_chance": 0.05,
+      "safe": true,
+      "tags": ["安全區域", "莊嚴肅穆", "宗門中樞"],
+      "allowed_npcs": ["npc_001_master_qingyun"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT"],
+      "allowed_item_drops": [],
+      "lore_facts": ["禁止喧嘩", "掌門玄靈子常在此閉關"],
+      "can_invent_details": false
+    },
+    {
+      "id": "qingyun_training_hall",
+      "name": "青雲門·演武場",
+      "description": "專門供弟子切磋武藝的場地，地面刻滿了劍痕和法術焦痕。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "west": "qingyun_plaza",
+        "north": "qingyun_sword_dojo"
+      },
+      "event_chance": 0.15,
+      "safe": true,
+      "tags": ["可以切磋", "修煉加成", "比武場地"],
+      "allowed_npcs": ["npc_004_disciple_red"],
+      "allowed_events": ["ATTACK", "MOVE", "TALK", "INSPECT", "CULTIVATE", "SKILL_USE"],
+      "allowed_item_drops": [],
+      "lore_facts": ["切磋點到為止", "紅藝經常在此練劍"],
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_cliff",
+      "name": "青雲門·天絕崖",
+      "description": "青雲峰最高的懸崖，雲霧繚繞，視野開闘。傳聞有隱士在此修行。",
+      "tier_requirement": 2.0,
+      "exits": {
+        "down": "qingyun_inner"
+      },
+      "event_chance": 0.2,
+      "safe": false,
+      "tags": ["靈氣濃郁", "危險地形", "可能有奇遇"],
+      "allowed_npcs": ["npc_005_hermit_stone"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "CULTIVATE"],
+      "allowed_item_drops": [],
+      "lore_facts": ["石長眉隱居於此", "傳說崖底有上古遺跡"],
+      "can_invent_details": true
+    },
+    {
+      "id": "town_tavern",
+      "name": "青雲鎮·醉仙樓",
+      "description": "熱鬧的酒肆，江湖人士和修仙者在此喝酒聊天。歌姬的歌聲悠揚動聽。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "west": "nearby_market"
+      },
+      "event_chance": 0.18,
+      "safe": true,
+      "tags": ["可以休息", "可以打聽消息", "喧鬧"],
+      "allowed_npcs": ["npc_006_bard_luna"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "REST", "TRADE"],
+      "allowed_item_drops": [],
+      "lore_facts": ["月娥的歌聲遠近聞名", "這裡消息靈通"],
+      "atmosphere_hints": {
+        "morning": "稀疏的客人，陽光透過窗戶灑入",
+        "afternoon": "漸漸熱鬧，修士三三兩兩聚集",
+        "evening": "人聲鼎沸，酒氣瀰漫",
+        "night": "燈火通明，偶有醉漢高談闘法"
+      },
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_inner_gate",
+      "name": "青雲門·內門入口",
+      "description": "通往內門的關卡，只有築基期以上弟子方可進入。戒備森嚴。",
+      "tier_requirement": 2.0,
+      "exits": {
+        "north": "qingyun_inner",
+        "south": "qingyun_plaza"
+      },
+      "event_chance": 0.1,
+      "safe": true,
+      "tags": ["檢查境界", "戒備森嚴", "關卡"],
+      "allowed_npcs": ["npc_007_demon_cultivator"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT"],
+      "allowed_item_drops": [],
+      "lore_facts": ["魔門使者曾在此出現", "守衛日夜巡邏"],
+      "can_invent_details": false
+    },
+    {
+      "id": "qingyun_sword_dojo",
+      "name": "青雲門·問劍堂",
+      "description": "專門研習劍法的道場，牆上掛滿了名劍。劍痴老人常年在此研究劍道。",
+      "tier_requirement": 2.0,
+      "exits": {
+        "south": "qingyun_training_hall"
+      },
+      "event_chance": 0.12,
+      "safe": true,
+      "tags": ["可以學習劍法", "劍意濃郁", "劍法聖地"],
+      "allowed_npcs": ["npc_008_elder_sword"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "SKILL_USE", "CULTIVATE"],
+      "allowed_item_drops": ["基礎劍法秘笈"],
+      "lore_facts": ["劍痴老人正在創造新劍招", "牆上的名劍皆有來歷"],
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_temple",
+      "name": "青雲門·淨心寺",
+      "description": "青雲門中的佛門寺院，香火繚繞，梵音陣陣。佛門弟子在此修行。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "east": "qingyun_plaza"
+      },
+      "event_chance": 0.08,
+      "safe": true,
+      "tags": ["心境平和", "可以冥想", "佛門聖地"],
+      "allowed_npcs": ["npc_009_priest_compassion"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "CULTIVATE", "REST"],
+      "allowed_item_drops": [],
+      "lore_facts": ["慈悲和尚來自極樂寺", "此處修煉心境事半功倍"],
+      "can_invent_details": true
+    },
+    {
+      "id": "qingyun_pool",
+      "name": "青雲門·碧波靈池",
+      "description": "青雲門的靈泉匯聚之地，池水清澈見底，靈氣氤氳。外門弟子常來此修煉。",
+      "tier_requirement": 1.0,
+      "exits": {
+        "north": "qingyun_plaza"
+      },
+      "event_chance": 0.1,
+      "safe": true,
+      "tags": ["靈氣濃郁", "可以打坐", "恢復法力"],
+      "allowed_npcs": ["npc_010_love_interest"],
+      "allowed_events": ["MOVE", "TALK", "INSPECT", "CULTIVATE", "REST"],
+      "allowed_item_drops": ["靈草"],
+      "lore_facts": ["云汐常在此修煉", "靈池水可直接飲用恢復法力"],
+      "can_invent_details": true
+    }
+  ]
+}

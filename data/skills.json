@@ -1,0 +1,159 @@
+{
+  "skills": [
+    {
+      "id": "skill_basic_sword",
+      "name": "基礎劍法",
+      "type": "combat",
+      "tier_requirement": 1.0,
+      "effects": {
+        "damage_base": 10,
+        "mp_cost": 5,
+        "cooldown_ticks": 0
+      },
+      "tags": ["劍法", "基礎", "近戰"],
+      "learn_conditions": ["初始技能"],
+      "visual_hints": [
+        "簡單的橫斬豎劈",
+        "中規中矩的劍招",
+        "入門級別的劍術"
+      ],
+      "upgrade_path": "skill_flowing_sword"
+    },
+    {
+      "id": "skill_meditation",
+      "name": "靜心訣",
+      "type": "cultivation",
+      "tier_requirement": 1.0,
+      "effects": {
+        "mp_recovery": 10,
+        "mp_cost": 0,
+        "cooldown_ticks": 5
+      },
+      "tags": ["心法", "基礎", "恢復"],
+      "learn_conditions": ["初始技能"],
+      "visual_hints": [
+        "盤膝而坐，調息吐納",
+        "靈氣緩緩匯聚",
+        "心如止水，神遊太虛"
+      ],
+      "upgrade_path": "skill_deep_meditation"
+    },
+    {
+      "id": "skill_spirit_sense",
+      "name": "靈覺術",
+      "type": "utility",
+      "tier_requirement": 1.0,
+      "effects": {
+        "detection_range": 50,
+        "mp_cost": 3,
+        "cooldown_ticks": 3
+      },
+      "tags": ["探測", "基礎", "輔助"],
+      "learn_conditions": ["初始技能"],
+      "visual_hints": [
+        "閉目感知周圍靈氣波動",
+        "神識向外擴散",
+        "感應到隱藏的氣息"
+      ],
+      "upgrade_path": "skill_divine_sense"
+    },
+    {
+      "id": "skill_flowing_sword",
+      "name": "流雲劍法",
+      "type": "combat",
+      "tier_requirement": 1.5,
+      "effects": {
+        "damage_base": 18,
+        "mp_cost": 8,
+        "cooldown_ticks": 1
+      },
+      "tags": ["劍法", "中階", "近戰", "連擊"],
+      "learn_conditions": ["習得基礎劍法", "劍道悟性 > 10"],
+      "visual_hints": [
+        "劍光如流水般連綿不絕",
+        "行雲流水，一氣呵成",
+        "劍勢圓轉如意"
+      ],
+      "upgrade_path": "skill_storm_sword"
+    },
+    {
+      "id": "skill_iron_body",
+      "name": "鐵布衫",
+      "type": "defense",
+      "tier_requirement": 1.5,
+      "effects": {
+        "defense_boost": 15,
+        "duration_ticks": 10,
+        "mp_cost": 10,
+        "cooldown_ticks": 15
+      },
+      "tags": ["防禦", "中階", "護體"],
+      "learn_conditions": ["體魄 > 15"],
+      "visual_hints": [
+        "皮膚泛起金光",
+        "氣血運轉，肌膚堅硬如鐵",
+        "刀槍不入的姿態"
+      ],
+      "upgrade_path": "skill_golden_body"
+    },
+    {
+      "id": "skill_healing_light",
+      "name": "癒合術",
+      "type": "healing",
+      "tier_requirement": 1.0,
+      "effects": {
+        "hp_restore": 15,
+        "mp_cost": 8,
+        "cooldown_ticks": 5
+      },
+      "tags": ["治療", "基礎", "恢復"],
+      "learn_conditions": ["在靈草堂學習"],
+      "visual_hints": [
+        "淡綠色的靈光包裹傷口",
+        "傷口緩緩癒合",
+        "溫暖的治癒力量"
+      ],
+      "upgrade_path": "skill_greater_healing"
+    },
+    {
+      "id": "skill_fireball",
+      "name": "火球術",
+      "type": "combat",
+      "tier_requirement": 1.5,
+      "effects": {
+        "damage_base": 20,
+        "damage_type": "fire",
+        "mp_cost": 12,
+        "cooldown_ticks": 3
+      },
+      "tags": ["法術", "中階", "遠程", "火系"],
+      "learn_conditions": ["在藏經閣學習", "靈根親和 > 10"],
+      "visual_hints": [
+        "掌心凝聚火焰",
+        "熾熱的火球呼嘯而出",
+        "灼熱的氣息席捲而來"
+      ],
+      "upgrade_path": "skill_flame_burst"
+    },
+    {
+      "id": "skill_lightfoot",
+      "name": "輕身術",
+      "type": "movement",
+      "tier_requirement": 1.0,
+      "effects": {
+        "speed_boost": 20,
+        "duration_ticks": 15,
+        "mp_cost": 5,
+        "cooldown_ticks": 10
+      },
+      "tags": ["身法", "基礎", "移動"],
+      "learn_conditions": ["初始技能"],
+      "visual_hints": [
+        "腳步輕盈如燕",
+        "身形飄忽不定",
+        "踏雪無痕的步伐"
+      ],
+      "upgrade_path": "skill_shadow_step"
+    }
+  ]
+}

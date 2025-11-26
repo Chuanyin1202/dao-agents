@@ -1,0 +1,100 @@
+{
+  "items": [
+    {
+      "id": "item_herb_common",
+      "name": "靈草",
+      "type": "material",
+      "tier": 1,
+      "rarity": "common",
+      "effects": {},
+      "tags": ["草藥", "煉丹材料"],
+      "price_range": {"min": 2, "max": 6},
+      "lore_hint": "常見的靈草，可入藥。",
+      "flavor_text_slots": [
+        "葉片散發淡淡清香",
+        "細嫩的根鬚帶著靈氣"
+      ],
+      "can_invent_details": true
+    },
+    {
+      "id": "item_rations",
+      "name": "乾糧",
+      "type": "consumable",
+      "tier": 1,
+      "rarity": "common",
+      "effects": {"hp_restore": 5},
+      "tags": ["食物", "基礎補給"],
+      "price_range": {"min": 1, "max": 3},
+      "lore_hint": "粗糙但管飽的行軍口糧。",
+      "flavor_text_slots": [
+        "口感粗糙，但能填飽肚子",
+        "淡淡的麥香，帶著些許乾硬"
+      ],
+      "can_invent_details": true
+    },
+    {
+      "id": "item_cloth_garb",
+      "name": "布衣",
+      "type": "armor",
+      "tier": 1,
+      "rarity": "common",
+      "effects": {"defense": 1},
+      "tags": ["衣物", "新手"],
+      "price_range": {"min": 3, "max": 8},
+      "lore_hint": "青雲門外門弟子的標配。",
+      "flavor_text_slots": [
+        "質地粗糙但尚稱耐穿",
+        "簡樸的布料，帶著宗門徽記"
+      ],
+      "can_invent_details": true
+    },
+    {
+      "id": "item_spirit_elixir",
+      "name": "靈藥",
+      "type": "consumable",
+      "tier": 1,
+      "rarity": "uncommon",
+      "effects": {"hp_restore": 20},
+      "tags": ["藥品", "恢復"],
+      "price_range": {"min": 12, "max": 20},
+      "lore_hint": "常見的療傷藥，採靈草而成。",
+      "flavor_text_slots": [
+        "藥香清涼，入口微苦",
+        "吞入後有股暖流在體內流轉"
+      ],
+      "can_invent_details": true
+    },
+    {
+      "id": "item_beast_hide",
+      "name": "獸皮",
+      "type": "material",
+      "tier": 1,
+      "rarity": "common",
+      "effects": {},
+      "tags": ["材料", "交易"],
+      "price_range": {"min": 4, "max": 10},
+      "lore_hint": "來自低階靈獸的皮革，可用於製作護甲。",
+      "flavor_text_slots": [
+        "柔韌的皮革，上有淡淡靈紋",
+        "處理過的獸皮，仍留有野性的氣息"
+      ],
+      "can_invent_details": true
+    },
+    {
+      "id": "item_basic_sword_manual",
+      "name": "基礎劍法秘笈",
+      "type": "skill_book",
+      "tier": 1,
+      "rarity": "common",
+      "effects": {"teaches_skill": "skill_basic_sword"},
+      "tags": ["技能書", "劍法"],
+      "price_range": {"min": 8, "max": 15},
+      "lore_hint": "記錄最基本的劍招，供初學者入門。",
+      "flavor_text_slots": [
+        "書頁略有磨損，邊角泛黃",
+        "手抄本，筆跡工整而有力"
+      ],
+      "can_invent_details": true
+    }
+  ]
+}
