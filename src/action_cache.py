@@ -68,8 +68,8 @@ class ActionCache:
         # 組合輸入和狀態
         cache_data = f"{user_input}|{json.dumps(state_snapshot, sort_keys=True)}"
 
-        # 生成 hash
-        return hashlib.sha256(cache_data.encode('utf-8')).hexdigest()[:16]
+        # 生成 hash（使用 32 字元 = 128 bits，碰撞風險極低）
+        return hashlib.sha256(cache_data.encode('utf-8')).hexdigest()[:32]
 
     def get(self, key: str) -> Optional[Dict[str, Any]]:
         """

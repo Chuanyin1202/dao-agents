@@ -54,7 +54,7 @@ EVENT_POOLS = {
     "qingyun_plaza": {
         "npcs": [
             # 固定 NPC（總是在這裡）
-            "npc_002_elder_chen",  # 陳長老
+            "npc_002_elder_herb",  # 靈妙真人（藥王谷長老）
         ],
         "random_encounters": [
             {
@@ -80,9 +80,9 @@ EVENT_POOLS = {
         "random_encounters": [
             {
                 "type": "npc",
-                "npc_id": "npc_003_beast_frostlion",  # 霜焰獅
+                "npc_id": "npc_011_beast_low_tier",  # 低階靈獸
                 "weight": 0.2,
-                "tier_range": (1.8, 2.5),
+                "tier_range": (1.0, 1.5),
             }
         ],
         "treasures": [
@@ -183,6 +183,7 @@ def get_available_items(location_id: str) -> List[str]:
     items = []
     for treasure in pool.get("treasures", []):
         if treasure.get("type") == "item":
-            items.append(treasure["item_name"])
+            if "item_id" in treasure:
+                items.append(treasure["item_id"])
 
     return items

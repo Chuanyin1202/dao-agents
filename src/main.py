@@ -3,6 +3,7 @@
 
 import sys
 import json
+import time
 from typing import Dict, Any, Optional
 import config
 from game_state import game_db
@@ -49,13 +50,24 @@ class DaoGame:
 
         # 獲取時間描述
         from time_engine import get_current_game_time
+        from cultivation import get_tier_display_name, get_cultivation_status
         time_info = get_current_game_time()
+
+        # 獲取境界和修煉狀態
+        tier_name = get_tier_display_name(state.get('tier', 1.0))
+        cult_status = get_cultivation_status(state)
+        progress_pct = cult_status['progress_percent']
+        progress_bar = "█" * (progress_pct // 10) + "░" * (10 - progress_pct // 10)
+
+        # 突破提示
+        breakthrough_hint = " ✨可突破" if cult_status['can_breakthrough'] else ""
 
         print(f"""
 ┌─ 【{state.get('name', '未命名')}】─────────────────────┐
-│ 修為: {state.get('tier')} ({state.get('level')} 級)  │ 氣運: {state.get('karma')}
+│ 境界: {tier_name} ({state.get('tier')})  │ 氣運: {state.get('karma')}
 │ HP: {hp_bar}  [{state.get('hp')}/{state.get('max_hp')}]
 │ 法力: {mp_bar}  [{state.get('mp')}/{state.get('max_mp')}]
+│ 修煉: {progress_bar}  [{cult_status['progress']}/{cult_status['required']}]{breakthrough_hint}
 │ 位置: {state.get('location', get_location_name(state.get('location_id', 'qingyun_foot')))}
 │ 時間: {time_info['description']}
 │ 背包: {', '.join(state.get('inventory', [])[:3])}{'...' if len(state.get('inventory', [])) > 3 else ''}
@@ -81,10 +93,24 @@ class DaoGame:
             'rest': self._handle_rest,
             'r': self._handle_rest,
             '休息': self._handle_rest,
+            'c': self._handle_cultivate,
+            '修煉': self._handle_cultivate,
+            'b': self._handle_breakthrough,
+            '突破': self._handle_breakthrough,
         }
 
         if user_input.lower() in instant_actions:
-            instant_actions[user_input.lower()]()
+            action_fn = instant_actions[user_input.lower()]
+
+            # 檢查行為是否允許
+            if action_fn == self._handle_rest and not self._is_action_allowed('REST'):
+                print("\n[提示] 此地無法休息。")
+                return True
+            if action_fn == self._handle_cultivate and not self._is_action_allowed('CULTIVATE'):
+                print("\n[提示] 此地無法修煉。")
+                return True
+
+            action_fn()
             return True
         return False
 
@@ -120,6 +146,10 @@ class DaoGame:
     def _handle_rest(self):
         """處理休息指令（恢復 MP）"""
         from world_data import get_location_data
+
+        if not self._is_action_allowed('REST'):
+            print("\n❌ 此地無法休息。")
+            return
 
         # 檢查是否在安全區域
         current_loc_id = self.player_state.get('location_id', 'qingyun_foot')
@@ -164,8 +194,117 @@ class DaoGame:
         # 存檔
         self.save_game()
 
+    def _handle_cultivate(self):
+        """處理修煉指令（累積修煉進度）"""
+        from cultivation import cultivate, get_cultivation_status
+        from time_engine import advance_game_time
+
+        location_id = self.player_state.get('location_id', 'qingyun_foot')
+
+        # 執行修煉
+        result = cultivate(self.player_state, location_id)
+
+        if not result['success']:
+            print(f"\n❌ {result['message']}")
+            return
+
+        # 應用狀態變更
+        state_changes = result['state_changes']
+        if 'mp_change' in state_changes:
+            self.player_state['mp'] = max(0, self.player_state['mp'] + state_changes['mp_change'])
+        if 'cultivation_progress' in state_changes:
+            self.player_state['cultivation_progress'] = state_changes['cultivation_progress']
+
+        # 推進時間
+        time_result = advance_game_time('CULTIVATE')
+        self.player_state['current_tick'] = time_result['new_tick']
+
+        # 輸出結果
+        print(f"\n🧘 {result['message']}")
+        print(f"⏱️  {time_result['time_description']}")
+
+        # 檢查是否可以突破
+        cult_status = get_cultivation_status(self.player_state)
+        if cult_status['can_breakthrough']:
+            print(f"\n✨ 修煉圓滿！輸入 'b' 嘗試突破（成功率 {cult_status['success_rate']:.1f}%）")
+
+        # 記錄事件
+        game_db.log_event(
+            self.player_id,
+            self.player_state.get('location', '未知'),
+            'CULTIVATE',
+            f"修煉獲得 {result['progress_gained']} 點進度"
+        )
+
+        # 存檔
+        self.save_game()
+
+    def _handle_breakthrough(self):
+        """處理突破指令（嘗試境界突破）"""
+        from cultivation import can_breakthrough, attempt_breakthrough, get_tier_display_name
+
+        # 檢查是否可以突破
+        can_break, reason = can_breakthrough(self.player_state)
+        if not can_break:
+            print(f"\n❌ 無法突破：{reason}")
+            return
+
+        # 確認突破
+        from cultivation import calculate_breakthrough_rate
+        tier = self.player_state.get('tier', 1.0)
+        karma = self.player_state.get('karma', 0)
+        success_rate = calculate_breakthrough_rate(tier, karma)
+
+        print(f"\n⚡ 準備突破 {get_tier_display_name(tier)}")
+        print(f"   當前成功率：{success_rate:.1f}%")
+        confirm = input("   確定要嘗試突破嗎？(y/n): ").strip().lower()
+
+        if confirm != 'y':
+            print("   取消突破。")
+            return
+
+        # 執行突破
+        result = attempt_breakthrough(self.player_state)
+
+        # 應用狀態變更
+        state_changes = result['state_changes']
+
+        if result['success']:
+            # 成功：更新所有屬性
+            self.player_state['tier'] = state_changes['tier']
+            self.player_state['cultivation_progress'] = state_changes['cultivation_progress']
+            self.player_state['max_hp'] += state_changes.get('max_hp_change', 0)
+            self.player_state['max_mp'] += state_changes.get('max_mp_change', 0)
+            self.player_state['hp'] = state_changes.get('hp', self.player_state['hp'])
+            self.player_state['mp'] = state_changes.get('mp', self.player_state['mp'])
+            self.player_state['breakthrough_attempts'] = state_changes.get('breakthrough_attempts', 0)
+
+            print(f"\n🎉 {result['message']}")
+            print(f"   擲骰：{result['roll']:.1f} < {result['success_rate']:.1f} = 成功！")
+        else:
+            # 失敗：扣血和進度
+            if 'hp_change' in state_changes:
+                self.player_state['hp'] = max(1, self.player_state['hp'] + state_changes['hp_change'])
+            self.player_state['cultivation_progress'] = state_changes.get('cultivation_progress', 0)
+            self.player_state['breakthrough_attempts'] = state_changes.get('breakthrough_attempts', 0)
+
+            print(f"\n💥 {result['message']}")
+            print(f"   擲骰：{result['roll']:.1f} >= {result['success_rate']:.1f} = 失敗...")
+
+        # 記錄事件
+        event_type = 'BREAKTHROUGH_SUCCESS' if result['success'] else 'BREAKTHROUGH_FAIL'
+        game_db.log_event(
+            self.player_id,
+            self.player_state.get('location', '未知'),
+            event_type,
+            result['narrative_hint']
+        )
+
+        # 存檔
+        self.save_game()
+
     def get_tier_name(self, tier: float) -> str:
-        """根據 tier 值獲取境界名稱"""
+        """根據 tier 值獲取境界名稱（已棄用，使用 cultivation.get_tier_display_name）"""
         tier_int = int(tier)
         tier_names = {
             1: "練氣期",
@@ -198,6 +337,17 @@ class DaoGame:
         ]
 
         print(f"   {random.choice(tips)}")
+
+    def _is_action_allowed(self, intent: str) -> bool:
+        """檢查當前地點是否允許指定意圖"""
+        from world_data import get_location_data
+
+        loc_data = get_location_data(self.player_state.get('location_id', 'qingyun_foot'))
+        allowed = loc_data.get('allowed_events') if loc_data else None
+
+        if not allowed:
+            return True
+        return intent in allowed
 
     def main_menu(self):
         """主菜單"""
@@ -338,264 +488,250 @@ class DaoGame:
     
     def process_action(self, user_input: str):
         """處理玩家行動（帶上下文記憶 + 智能快取）"""
-        # 正常 AI 處理流程
+        start_time = time.perf_counter()
         print("\n⏳ 正在處理你的行動...")
-        self.show_thinking_tip()  # 顯示隨機提示，減少等待感
+        self.show_thinking_tip()
 
-        # 第 0 步：查詢最近的事件（上下文記憶）
-        recent_events = game_db.get_recent_events(self.player_id, limit=5)
+        try:
+            # 第 0 步：查詢最近的事件（上下文記憶）
+            recent_events = game_db.get_recent_events(self.player_id, limit=5)
 
-        # 第 1 步：觀察（帶上下文）
-        intent = agent_observer(user_input, recent_events)
+            # 第 1 步：觀察（帶上下文）
+            intent = agent_observer(user_input, recent_events)
 
-        if intent.get('confidence', 0) < 0.3:
-            print(f"DM: 我沒有理解你的意思。能再說一遍嗎？")
-            return
-
-        # 檢查快取（只在「意圖解析後」且「行動可快取」時）
-        intent_type = intent.get('intent')
-        cache_key = None
-
-        if intent_type not in NON_CACHEABLE_INTENTS:
-            cache_key = action_cache.generate_cache_key(user_input, self.player_state)
-            cached_result = action_cache.get(cache_key)
-
-            if cached_result:
-                print("\n⚡ 使用快取結果（秒回）")
-                self.apply_state_update(cached_result['state_update'])
-                game_db.log_event(
-                    self.player_id, self.player_state['location'],
-                    cached_result.get('event_type', 'ACTION'),
-                    cached_result['narrative'][:150]
-                )
-                print(f"\n{cached_result['narrative']}")
-
-                # 快取路徑也要推進時間，保持與正常流程一致
-                time_result = advance_game_time(intent.get('intent', 'GENERAL'))
-                self.player_state['current_tick'] = time_result['new_tick']
-                print(f"⏱️  {time_result['time_description']}")
+            if intent.get('confidence', 0) < 0.3:
+                print("DM: 我沒有理解你的意思。能再說一遍嗎？")
                 return
 
-        # 【新增】移動意圖的特殊處理（地圖驗證）
-        if intent_type == 'MOVE':
-            direction = normalize_direction(intent.get('target', ''))
-            current_location_id = self.player_state.get('location_id', 'qingyun_foot')
+            # 檢查快取（只在「意圖解析後」且「行動可快取」時）
+            intent_type = intent.get('intent')
+            cache_key = None
 
-            # 驗證移動
-            validation = validate_movement(
-                current_location_id,
-                direction if direction else intent.get('target', ''),
-                self.player_state.get('tier', 1.0)
-            )
+            if intent_type not in NON_CACHEABLE_INTENTS:
+                cache_key = action_cache.generate_cache_key(user_input, self.player_state)
+                cached_result = action_cache.get(cache_key)
 
-            if not validation['valid']:
-                # 非法移動，直接返回錯誤
-                print(f"\n❌ {validation['reason']}")
-                return
+                if cached_result:
+                    print("\n⚡ 使用快取結果（秒回）")
+                    self.apply_state_update(cached_result['state_update'])
+                    game_db.log_event(
+                        self.player_id, self.player_state['location'],
+                        cached_result.get('event_type', 'ACTION'),
+                        cached_result['narrative'][:150]
+                    )
+                    print(f"\n{cached_result['narrative']}")
 
-            # 合法移動，檢查是否觸發事件（新手降低機率）
-            trigger_event = should_trigger_random_event(
-                validation['destination_id'],
-                self.player_state.get('karma', 0),
-                self.player_state.get('tier', 1.0)
-            )
-
-            if not trigger_event:
-                # 簡單移動，不調用 AI（極速響應）
-                narrative = get_simple_movement_narrative(
-                    current_location_id,
-                    validation['destination_id'],
-                    direction if direction else intent.get('target', '')
-                )
-
-                # 計算消耗
-                mp_cost = get_location_mp_cost(current_location_id, validation['destination_id'])
-                time_cost = get_location_time_cost(current_location_id, validation['destination_id'])
-
-                # 檢查法力是否足夠
-                current_mp = self.player_state.get('mp', 0)
-                if current_mp < mp_cost:
-                    print(f"\n❌ 法力不足。需要 {mp_cost} 點，當前 {current_mp} 點。")
+                    time_result = advance_game_time(intent.get('intent', 'GENERAL'))
+                    self.player_state['current_tick'] = time_result['new_tick']
+                    print(f"⏱️  {time_result['time_description']}")
                     return
 
-                state_update = {
-                    'hp_change': 0,
-                    'mp_change': -mp_cost,
-                    'karma_change': 0,
-                    'items_gained': [],
-                    'location_new': validation['destination_name'],
-                    'experience_gained': 0,
-                }
+            # 移動意圖的特殊處理（地圖驗證）
+            if intent_type == 'MOVE':
+                direction = normalize_direction(intent.get('target', ''))
+                current_location_id = self.player_state.get('location_id', 'qingyun_foot')
 
-                # 更新位置 ID
-                self.player_state['location_id'] = validation['destination_id']
-                self.player_state['location'] = validation['destination_name']
-
-                # 推進時間
-                time_result = advance_game_time('MOVE')
-                self.player_state['current_tick'] = time_result['new_tick']
-
-                self.apply_state_update(state_update)
-                print(f"\n{narrative}")
-                print(f"⏱️  {time_result['time_description']}")
-
-                # 記錄事件
-                game_db.log_event(
-                    self.player_id,
-                    validation['destination_name'],
-                    'MOVE',
-                    narrative[:150]
+                validation = validate_movement(
+                    current_location_id,
+                    direction if direction else intent.get('target', ''),
+                    self.player_state.get('tier', 1.0)
                 )
-                return
 
-            # 有隨機事件，繼續正常流程（會調用 Drama）
-            print(f"\n✨ 在前往 {validation['destination_name']} 的路上，發生了一些事...")
+                if not validation['valid']:
+                    print(f"\n❌ {validation['reason']}")
+                    return
 
-        # 查詢目標 NPC
-        target_npc = None
-        if intent.get('target'):
-            target_npc = npc_manager.get_npc(intent['target']) or \
-                        npc_manager.get_npc_by_name(intent['target'])
+                trigger_event = should_trigger_random_event(
+                    validation['destination_id'],
+                    self.player_state.get('karma', 0),
+                    self.player_state.get('tier', 1.0)
+                )
 
-        # 構建地圖上下文（傳遞給 Logic Agent）
-        current_location_id = self.player_state.get('location_id', 'qingyun_foot')
-        world_map_context = get_location_context(current_location_id)
+                if not trigger_event:
+                    narrative = get_simple_movement_narrative(
+                        current_location_id,
+                        validation['destination_id'],
+                        direction if direction else intent.get('target', '')
+                    )
 
-        # 第 2 步：邏輯 + 戲劇（平行調用，帶上下文 + 地圖約束）
-        if config.DEBUG:
-            print("\n⏳ 平行調用邏輯派和戲劇派...")
+                    mp_cost = get_location_mp_cost(current_location_id, validation['destination_id'])
 
-        logic_report, drama_proposal = call_logic_and_drama_parallel(
-            self.player_state, intent, target_npc, recent_events, world_map_context  # ← 傳遞地圖約束
-        )
+                    current_mp = self.player_state.get('mp', 0)
+                    if current_mp < mp_cost:
+                        print(f"\n❌ 法力不足。需要 {mp_cost} 點，當前 {current_mp} 點。")
+                        return
 
-        # 顯示 Agent 辯論過程（核心特色）
-        self.display_agent_debate(logic_report, drama_proposal)
+                    state_update = {
+                        'hp_change': 0,
+                        'mp_change': -mp_cost,
+                        'karma_change': 0,
+                        'items_gained': [],
+                        'location_new': validation['destination_name'],
+                        'experience_gained': 0,
+                    }
 
-        # 第 3 步：決策（帶上下文）
-        decision = agent_director(
-            self.player_state, logic_report, drama_proposal,
-            intent, target_npc, recent_events  # ← 傳遞上下文
-        )
+                    self.player_state['location_id'] = validation['destination_id']
+                    self.player_state['location'] = validation['destination_name']
 
-        # 第 3.5 步：數據一致性驗證（三層策略）
-        narrative = decision.get('narrative', '發生了某件奇異的事情。')
-        state_update = decision.get('state_update', {})
+                    time_result = advance_game_time('MOVE')
+                    self.player_state['current_tick'] = time_result['new_tick']
 
-        from validators import (
-            validator, auto_fix_state, validate_npc_existence,
-            validate_location_rules
-        )
+                    self.apply_state_update(state_update)
+                    print(f"\n{narrative}")
+                    print(f"⏱️  {time_result['time_description']}")
 
-        # 🛡️ NPC 白名單驗證
-        is_npc_valid, invalid_npcs = validate_npc_existence(decision, recent_events)
-        if not is_npc_valid:
+                    game_db.log_event(
+                        self.player_id,
+                        validation['destination_name'],
+                        'MOVE',
+                        narrative[:150]
+                    )
+                    return
+
+                print(f"\n✨ 在前往 {validation['destination_name']} 的路上，發生了一些事...")
+
+            # 查詢目標 NPC
+            target_npc = None
+            if intent.get('target'):
+                target_npc = npc_manager.get_npc(intent['target']) or \
+                            npc_manager.get_npc_by_name(intent['target'])
+
+            # 構建地圖上下文
+            current_location_id = self.player_state.get('location_id', 'qingyun_foot')
+            world_map_context = get_location_context(current_location_id)
+
+            # 第 2 步：邏輯 + 戲劇（平行調用）
             if config.DEBUG:
-                print(f"  ⚠️  檢測到未註冊 NPC: {invalid_npcs}")
+                print("\n⏳ 平行調用邏輯派和戲劇派...")
 
-            # 清理幻覺 NPC
-            for npc_name in invalid_npcs:
-                narrative = narrative.replace(npc_name, "某人")
-
-            # 清理 npc_relations_change
-            if 'npc_relations_change' in state_update:
-                state_update['npc_relations_change'] = {
-                    k: v for k, v in state_update['npc_relations_change'].items()
-                    if k not in invalid_npcs
-                }
-
-            decision['narrative'] = narrative
-            decision['state_update'] = state_update
-
-        validation = validator.validate(narrative, state_update, self.player_state)
-
-        # 顯示警告（Level 1 - 不阻止）
-        if validation['warnings']:
-            for warning in validation['warnings']:
-                if config.DEBUG:
-                    print(f"  {warning}")
-
-        # 地點規則警告（僅提示，不阻擋）
-        loc_warnings = validate_location_rules(
-            intent_type,
-            state_update,
-            self.player_state.get('location_id', 'qingyun_foot'),
-            target_npc.get('id') if target_npc else None
-        )
-        for warning in loc_warnings:
-            print(f"⚠️  {warning}")
-
-        # 處理嚴重錯誤（Level 2 & 3）
-        if not validation['valid']:
-            print("\n⚠️  檢測到數據不一致，正在修正...")
-            for error in validation['errors']:
-                print(f"  {error}")
-
-            # Level 2: 重試一次
-            if config.DEBUG:
-                print("\n  🔄 Level 2: 重新調用 Director...")
-
-            error_feedback = "\n".join(validation['errors'])
-
-            # 重新調用 Director（帶錯誤信息）
-            decision = agent_director(
-                self.player_state, logic_report, drama_proposal,
-                intent, target_npc, recent_events,
-                error_feedback=error_feedback  # 傳遞錯誤反饋
+            logic_report, drama_proposal = call_logic_and_drama_parallel(
+                self.player_state, intent, target_npc, recent_events, world_map_context
             )
 
+            if config.DEBUG:
+                self.display_agent_debate(logic_report, drama_proposal)
+
+            # 第 3 步：決策（帶上下文）
+            decision = agent_director(
+                self.player_state, logic_report, drama_proposal,
+                intent, target_npc, recent_events
+            )
+
+            # 第 3.5 步：數據一致性驗證（三層策略）
             narrative = decision.get('narrative', '發生了某件奇異的事情。')
             state_update = decision.get('state_update', {})
 
-            # 重新驗證
+            from validators import (
+                validator, auto_fix_state, validate_npc_existence,
+                validate_location_rules
+            )
+
+            # NPC 白名單驗證
+            is_npc_valid, invalid_npcs = validate_npc_existence(decision, recent_events)
+            if not is_npc_valid:
+                if config.DEBUG:
+                    print(f"  ⚠️  檢測到未註冊 NPC: {invalid_npcs}")
+
+                for npc_name in invalid_npcs:
+                    narrative = narrative.replace(npc_name, "某人")
+
+                if isinstance(state_update.get('npc_relations_change'), dict):
+                    state_update['npc_relations_change'] = {
+                        k: v for k, v in state_update['npc_relations_change'].items()
+                        if k not in invalid_npcs
+                    }
+                else:
+                    state_update['npc_relations_change'] = {}
+
+                decision['narrative'] = narrative
+                decision['state_update'] = state_update
+
             validation = validator.validate(narrative, state_update, self.player_state)
 
+            # 顯示警告（Level 1 - 不阻止）
+            if config.DEBUG and validation['warnings']:
+                for warning in validation['warnings']:
+                    print(f"  {warning}")
+
+            # 地點規則警告
+            if config.DEBUG:
+                loc_warnings = validate_location_rules(
+                    intent_type,
+                    state_update,
+                    self.player_state.get('location_id', 'qingyun_foot'),
+                    target_npc.get('id') if target_npc else None
+                )
+                for warning in loc_warnings:
+                    print(f"⚠️  {warning}")
+
+            # 處理嚴重錯誤（Level 2 & 3）
             if not validation['valid']:
-                # Level 3: Regex 兜底
                 if config.DEBUG:
-                    print("\n  🔧 Level 3: 自動修復...")
+                    print("\n⚠️  檢測到數據不一致，正在修正...")
+                    for error in validation['errors']:
+                        print(f"  {error}")
+                    print("\n  🔄 Level 2: 重新調用 Director...")
 
-                state_update = auto_fix_state(narrative, state_update)
+                error_feedback = "\n".join(validation['errors'])
 
-                # 最後一次驗證（記錄結果）
-                final_validation = validator.validate(narrative, state_update, self.player_state)
-                if not final_validation['valid']:
-                    print("  ⚠️  自動修復後仍有錯誤（已盡力）")
-                else:
-                    print("  ✅ 自動修復成功")
+                decision = agent_director(
+                    self.player_state, logic_report, drama_proposal,
+                    intent, target_npc, recent_events,
+                    error_feedback=error_feedback
+                )
 
-        # 第 4 步：應用狀態更新
-        self.apply_state_update(state_update)
+                narrative = decision.get('narrative', '發生了某件奇異的事情。')
+                state_update = decision.get('state_update', {})
 
-        # 第 4.5 步：推進時間（所有行動都會推進時間）
-        action_type = intent.get('intent', 'GENERAL')
-        time_result = advance_game_time(action_type)
-        self.player_state['current_tick'] = time_result['new_tick']
+                validation = validator.validate(narrative, state_update, self.player_state)
 
-        # 第 5 步：輸出
-        print(f"\n✨ DM: {narrative}")
-        print(f"⏱️  {time_result['time_description']}")
+                if not validation['valid']:
+                    if config.DEBUG:
+                        print("\n  🔧 Level 3: 自動修復...")
 
-        # 記錄事件
-        game_db.log_event(
-            self.player_id,
-            self.player_state['location'],
-            intent.get('intent', 'UNKNOWN'),
-            narrative,
-            target_npc.get('id') if target_npc else None
-        )
+                    state_update = auto_fix_state(narrative, state_update)
 
-        # 快取結果（只快取「可快取行動」）
-        if cache_key and intent_type not in NON_CACHEABLE_INTENTS:
-            # 快取前先經過翻譯層驗證
-            from validators import normalize_location_update
-            validated_update = normalize_location_update(state_update.copy())
+                    final_validation = validator.validate(narrative, state_update, self.player_state)
+                    if not final_validation['valid']:
+                        print("  ⚠️  自動修復後仍有錯誤（已盡力）")
+                    elif config.DEBUG:
+                        print("  ✅ 自動修復成功")
 
-            action_cache.set(cache_key, {
-                'narrative': narrative,
-                'state_update': validated_update,
-                'event_type': intent.get('intent', 'ACTION')
-            })
+            # 第 4 步：應用狀態更新
+            self.apply_state_update(state_update)
+
+            # 第 4.5 步：推進時間
+            action_type = intent.get('intent', 'GENERAL')
+            time_result = advance_game_time(action_type)
+            self.player_state['current_tick'] = time_result['new_tick']
+
+            # 第 5 步：輸出
+            print(f"\n✨ DM: {narrative}")
+            print(f"⏱️  {time_result['time_description']}")
+
+            # 記錄事件
+            game_db.log_event(
+                self.player_id,
+                self.player_state['location'],
+                intent.get('intent', 'UNKNOWN'),
+                narrative,
+                target_npc.get('id') if target_npc else None
+            )
+
+            # 快取結果
+            if cache_key and intent_type not in NON_CACHEABLE_INTENTS:
+                from validators import normalize_location_update
+                validated_update = normalize_location_update(state_update.copy())
+
+                action_cache.set(cache_key, {
+                    'narrative': narrative,
+                    'state_update': validated_update,
+                    'event_type': intent.get('intent', 'ACTION')
+                })
+
+        finally:
+            duration = time.perf_counter() - start_time
+            print(f"\n⌚ 指令處理耗時 {duration:.2f} 秒")
     
     def apply_state_update(self, update: Dict[str, Any]):
         """應用狀態更新"""
@@ -639,7 +775,7 @@ class DaoGame:
             self.player_state['location'] = get_location_name(update['location_id'])
         
         # NPC 關係變更
-        if 'npc_relations_change' in update:
+        if isinstance(update.get('npc_relations_change'), dict):
             for npc_id, delta in update['npc_relations_change'].items():
                 game_db.update_npc_relation(self.player_id, npc_id, delta)
         
@@ -648,10 +784,22 @@ class DaoGame:
             for skill in update['skills_gained']:
                 if skill not in self.player_state['skills']:
                     self.player_state['skills'].append(skill)
-        
-        # 經驗值
-        if 'experience_gained' in update:
-            self.player_state['experience'] += update['experience_gained']
+
+        # 修煉進度（AI 決策可能會給予進度加成）
+        if 'cultivation_progress_change' in update:
+            current = self.player_state.get('cultivation_progress', 0)
+            self.player_state['cultivation_progress'] = max(0, current + update['cultivation_progress_change'])
+
+        # 境界變更（罕見情況，如奇遇）
+        if 'tier_change' in update:
+            new_tier = round(self.player_state.get('tier', 1.0) + update['tier_change'], 1)
+            self.player_state['tier'] = max(1.0, new_tier)
+
+        # max_hp/max_mp 變更
+        if 'max_hp_change' in update:
+            self.player_state['max_hp'] = max(10, self.player_state['max_hp'] + update['max_hp_change'])
+        if 'max_mp_change' in update:
+            self.player_state['max_mp'] = max(10, self.player_state['max_mp'] + update['max_mp_change'])
 
         # 智能存檔：狀態重大變化時立即存檔
         should_save = any([
@@ -659,7 +807,8 @@ class DaoGame:
             update.get('items_gained'),  # 獲得物品
             update.get('location_id'),  # 移動位置
             update.get('skills_gained'),  # 獲得技能
-            update.get('experience_gained', 0) >= 20  # 獲得大量經驗
+            update.get('tier_change'),  # 境界變化
+            update.get('cultivation_progress_change', 0) >= 20  # 獲得大量修煉進度
         ])
 
         if should_save:
@@ -669,19 +818,50 @@ class DaoGame:
 
     def show_quick_commands(self):
         """顯示快捷命令"""
-        # 獲取當前位置的 NPC
-        npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
+        from world_data import get_location_data
+
+        loc_id = self.player_state.get('location_id', 'qingyun_foot')
+        loc_data = get_location_data(loc_id) or {}
+        allowed_events = set(loc_data.get('allowed_events', []))
+        allow_all = not allowed_events  # 若未定義，視為全允許
+        npcs_here = npc_manager.get_npcs_by_location(loc_id)
+        can_rest = ('REST' in allowed_events or allow_all) and loc_data.get('safe', False) and self.player_state.get('mp', 0) < self.player_state.get('max_mp', 50)
+
+        def allowed(intent: str) -> bool:
+            return allow_all or intent in allowed_events
+
+        cmds = []
+        if allowed('MOVE'):
+            cmds.append('m=移動')
+        if allowed('ATTACK') and npcs_here:
+            cmds.append('a=攻擊')
+        if allowed('TALK') and npcs_here:
+            cmds.append('t=對話')
+        if allowed('CULTIVATE'):
+            cmds.append('c=修煉')
+
+        # 檢查是否可以突破
+        from cultivation import can_breakthrough
+        can_break, _ = can_breakthrough(self.player_state)
+        if can_break:
+            cmds.append('b=突破✨')
+
+        if can_rest:
+            cmds.append('r=休息(回復法力)')
+        if allowed('INSPECT'):
+            cmds.append('l=查看周圍')
+
+        # 背包不受 allowed_events 限制
+        cmds.append('i=背包')
 
         print("\n【快捷命令】")
-        # 根據是否有 NPC 動態調整顯示
-        if npcs_here:
-            print("  m=移動  a=攻擊  t=對話  c=修煉  i=背包  l=查看周圍")
+        if cmds:
+            print("  " + "  ".join(cmds))
+
+        if npcs_here and allowed('TALK'):
             print("\n【附近的 NPC】")
             for i, npc in enumerate(npcs_here[:3], 1):  # 最多顯示 3 個
                 print(f"  t{i} - 與 {npc['name']} 對話")
-        else:
-            # 沒有 NPC 時，不顯示 t 和 a
-            print("  m=移動  c=修煉  i=背包  l=查看周圍")
 
         print("\n  💡 或輸入完整命令（如：\"我要去靈草堂\"）")
 
@@ -796,6 +976,10 @@ class DaoGame:
         if user_input == 'm':
             from world_data import get_location_data, get_location_name
 
+            if not self._is_action_allowed('MOVE'):
+                print("\n[提示] 此地無法移動。")
+                return None
+
             current_loc_id = self.player_state.get('location_id', 'qingyun_foot')
             loc_data = get_location_data(current_loc_id)
 
@@ -831,6 +1015,9 @@ class DaoGame:
 
         # 處理單獨的 t 命令（對話）
         if user_input == 't':
+            if not self._is_action_allowed('TALK'):
+                print("\n[提示] 此地無法對話。")
+                return None
             npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
             if not npcs_here:
                 print("\n[提示] 這裡沒有人可以對話。")
@@ -841,10 +1028,19 @@ class DaoGame:
 
         # 處理基礎快捷命令
         if user_input in shortcuts:
+            if user_input == 'c' and not self._is_action_allowed('CULTIVATE'):
+                print("\n[提示] 此地無法修煉。")
+                return None
+            if user_input == 'l' and not self._is_action_allowed('INSPECT'):
+                print("\n[提示] 此地無法查看周圍。")
+                return None
             return shortcuts[user_input]
 
         # 特殊處理：攻擊命令（需要驗證目標）
         if user_input == 'a':
+            if not self._is_action_allowed('ATTACK'):
+                print("\n[提示] 此地無法攻擊。")
+                return None
             npcs_here = npc_manager.get_npcs_by_location(self.player_state.get('location_id', 'qingyun_foot'))
             if not npcs_here:
                 print("\n[提示] 附近沒有可攻擊的目標。")
@@ -911,6 +1107,7 @@ class DaoGame:
   a - 攻擊
   t - 與 NPC 對話
   c - 打坐修煉
+  r - 休息（安全區域且地點允許時可用）
   i - 查看背包
   l - 查看周圍環境
 

@@ -76,6 +76,12 @@ def call_gpt(system_prompt: str, user_message: str, model: str = None,
         RuntimeError: 重試耗盡後仍失敗
     """
     import time
+    from openai import (
+        APIConnectionError,
+        RateLimitError,
+        APIStatusError,
+        AuthenticationError,
+    )
 
     model = model or config.DEFAULT_MODEL
     last_error = None
@@ -111,16 +117,55 @@ def call_gpt(system_prompt: str, user_message: str, model: str = None,
 
             return result
 
-        except Exception as e:
+        except AuthenticationError as e:
+            # 認證錯誤不應該重試
+            print(f"[ERROR] API 認證失敗: {e}")
+            print("[ERROR] 請檢查 OPENAI_API_KEY 是否正確設置")
+            return ""
+
+        except RateLimitError as e:
+            # 速率限制：使用更長的退避時間
             last_error = e
             if attempt < config.API_MAX_RETRIES - 1:
-                # 指數退避：1s, 2s, 4s...
-                delay = config.API_RETRY_BASE_DELAY * (2 ** attempt)
-                print(f"[WARNING] API 調用失敗 (嘗試 {attempt + 1}/{config.API_MAX_RETRIES}): {e}")
+                delay = config.API_RETRY_BASE_DELAY * (3 ** attempt)  # 更激進的退避
+                print(f"[WARNING] API 速率限制 (嘗試 {attempt + 1}/{config.API_MAX_RETRIES}): {e}")
                 print(f"[INFO] {delay:.1f} 秒後重試...")
                 time.sleep(delay)
             else:
-                print(f"[ERROR] API 調用失敗，已耗盡所有重試次數: {e}")
+                print(f"[ERROR] API 速率限制，已耗盡所有重試次數")
+
+        except APIConnectionError as e:
+            # 網絡連接錯誤：可以重試
+            last_error = e
+            if attempt < config.API_MAX_RETRIES - 1:
+                delay = config.API_RETRY_BASE_DELAY * (2 ** attempt)
+                print(f"[WARNING] API 連接失敗 (嘗試 {attempt + 1}/{config.API_MAX_RETRIES}): {e}")
+                print(f"[INFO] {delay:.1f} 秒後重試...")
+                time.sleep(delay)
+            else:
+                print(f"[ERROR] API 連接失敗，已耗盡所有重試次數")
+
+        except APIStatusError as e:
+            # API 狀態錯誤（500 等）：可以重試
+            last_error = e
+            if attempt < config.API_MAX_RETRIES - 1:
+                delay = config.API_RETRY_BASE_DELAY * (2 ** attempt)
+                print(f"[WARNING] API 狀態錯誤 {e.status_code} (嘗試 {attempt + 1}/{config.API_MAX_RETRIES}): {e}")
+                print(f"[INFO] {delay:.1f} 秒後重試...")
+                time.sleep(delay)
+            else:
+                print(f"[ERROR] API 狀態錯誤，已耗盡所有重試次數: {e}")
+
+        except Exception as e:
+            # 未預期的錯誤：記錄並嘗試重試
+            last_error = e
+            if attempt < config.API_MAX_RETRIES - 1:
+                delay = config.API_RETRY_BASE_DELAY * (2 ** attempt)
+                print(f"[WARNING] 未預期錯誤 (嘗試 {attempt + 1}/{config.API_MAX_RETRIES}): {type(e).__name__}: {e}")
+                print(f"[INFO] {delay:.1f} 秒後重試...")
+                time.sleep(delay)
+            else:
+                print(f"[ERROR] 未預期錯誤，已耗盡所有重試次數: {type(e).__name__}: {e}")
 
     # 所有重試都失敗，返回空字串（保持向後兼容）
     # 注意：上層代碼需要處理空字串的情況

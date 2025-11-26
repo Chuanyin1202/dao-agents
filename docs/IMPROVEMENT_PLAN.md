@@ -311,7 +311,7 @@ def process_action(self, user_input: str):
                 'karma_change': 0,
                 'items_gained': [],
                 'location_new': validation['destination'],
-                'experience_gained': 0,
+                'cultivation_progress_change': 0,
             }
 
             self._apply_state_update(state_update)
@@ -368,13 +368,13 @@ LOCATION_EVENTS = {
                 "max_items": 0,
             },
         ],
-        "medium": [  # 中事件：可能獲得物品或少量經驗
+        "medium": [  # 中事件：可能獲得物品或少量修煉進度
             {
                 "trigger": lambda state: state['karma'] > 30,
                 "description": "長老正在講解修煉心法",
                 "max_karma_change": 10,
                 "max_items": 1,
-                "max_experience": 20,
+                "max_cultivation_progress": 20,
             },
         ],
         "major": [  # 大事件：顯著影響（極低機率）
@@ -383,7 +383,7 @@ LOCATION_EVENTS = {
                 "description": "宗門比武大會即將開始",
                 "max_karma_change": 30,
                 "max_items": 2,
-                "max_experience": 100,
+                "max_cultivation_progress": 50,
             },
         ],
     },
@@ -400,7 +400,7 @@ def select_random_event(location: str, player_state: dict) -> dict:
             "constraints": {
                 "max_karma_change": int,
                 "max_items": int,
-                "max_experience": int,
+                "max_cultivation_progress": int,
             }
         }
     """

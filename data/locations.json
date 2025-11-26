@@ -14,7 +14,7 @@
       "tags": ["安全區域", "新手友善", "起始點"],
       "allowed_npcs": [],
       "allowed_events": ["MOVE", "INSPECT", "CULTIVATE", "REST"],
-      "allowed_item_drops": ["靈草"],
+      "allowed_item_drops": ["item_herb_common"],
       "lore_facts": ["新弟子入門必經之路", "石階由開山祖師親手鋪設"],
       "atmosphere_hints": {
         "morning": "晨霧繚繞，石階上凝著露珠",
@@ -40,7 +40,7 @@
       "tags": ["可以切磋", "任務板", "交流中心"],
       "allowed_npcs": ["npc_004_disciple_red"],
       "allowed_events": ["ATTACK", "MOVE", "TALK", "INSPECT", "CULTIVATE", "REST", "TRADE"],
-      "allowed_item_drops": ["乾糧"],
+      "allowed_item_drops": ["item_rations"],
       "lore_facts": ["每月初一舉辦弟子比武", "告示板上會更新宗門任務"],
       "can_invent_details": true
     },
@@ -57,7 +57,7 @@
       "tags": ["可以購買丹藥", "可以學習煉丹", "藥香瀰漫"],
       "allowed_npcs": ["npc_002_elder_herb"],
       "allowed_events": ["MOVE", "TALK", "INSPECT", "USE_ITEM", "TRADE"],
-      "allowed_item_drops": ["靈草", "靈藥"],
+      "allowed_item_drops": ["item_herb_common", "item_spirit_elixir"],
       "lore_facts": ["宗門所有丹藥皆出自此處", "靈妙真人親自坐鎮"],
       "can_invent_details": true
     },
@@ -74,7 +74,7 @@
       "tags": ["可以學習技能", "需要貢獻點", "靈氣濃郁"],
       "allowed_npcs": [],
       "allowed_events": ["MOVE", "TALK", "INSPECT", "SKILL_USE"],
-      "allowed_item_drops": ["基礎劍法秘笈"],
+      "allowed_item_drops": ["item_basic_sword_manual"],
       "lore_facts": ["禁止大聲喧嘩", "三樓存放宗門禁術"],
       "can_invent_details": false
     },
@@ -109,7 +109,7 @@
       "tags": ["危險區域", "可能遭遇靈獸", "可以採集靈草"],
       "allowed_npcs": [],
       "allowed_events": ["ATTACK", "MOVE", "INSPECT", "USE_ITEM"],
-      "allowed_item_drops": ["靈草", "靈藥", "獸皮"],
+      "allowed_item_drops": ["item_herb_common", "item_spirit_elixir", "item_beast_hide"],
       "lore_facts": ["低階靈獸棲息地", "偶有高階妖獸出沒"],
       "can_invent_details": true
     },
@@ -127,7 +127,7 @@
       "tags": ["可以交易", "物價便宜", "情報集散地"],
       "allowed_npcs": ["npc_003_merchant_fang"],
       "allowed_events": ["MOVE", "TALK", "INSPECT", "USE_ITEM", "TRADE"],
-      "allowed_item_drops": ["乾糧"],
+      "allowed_item_drops": ["item_rations"],
       "lore_facts": ["每逢初一十五有大集", "方三塊的攤位最熱鬧"],
       "can_invent_details": true
     },
@@ -237,7 +237,7 @@
       "tags": ["可以學習劍法", "劍意濃郁", "劍法聖地"],
       "allowed_npcs": ["npc_008_elder_sword"],
       "allowed_events": ["MOVE", "TALK", "INSPECT", "SKILL_USE", "CULTIVATE"],
-      "allowed_item_drops": ["基礎劍法秘笈"],
+      "allowed_item_drops": ["item_basic_sword_manual"],
       "lore_facts": ["劍痴老人正在創造新劍招", "牆上的名劍皆有來歷"],
       "can_invent_details": true
     },
@@ -271,7 +271,7 @@
       "tags": ["靈氣濃郁", "可以打坐", "恢復法力"],
       "allowed_npcs": ["npc_010_love_interest"],
       "allowed_events": ["MOVE", "TALK", "INSPECT", "CULTIVATE", "REST"],
-      "allowed_item_drops": ["靈草"],
+      "allowed_item_drops": ["item_herb_common"],
       "lore_facts": ["云汐常在此修煉", "靈池水可直接飲用恢復法力"],
       "can_invent_details": true
     }

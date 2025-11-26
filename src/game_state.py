@@ -4,36 +4,81 @@
 import sqlite3
 import json
 import copy
+import shutil
+import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 import config
+
+# 資料庫 schema 版本（每次修改表結構時遞增）
+# v3: 新增 cultivation_progress, breakthrough_attempts 欄位
+DB_SCHEMA_VERSION = 3
+
 
 class GameStateManager:
     def __init__(self):
         self.db_path = config.DB_PATH
         self.init_database()
-    
+
+    def _get_schema_version(self, cursor: sqlite3.Cursor) -> int:
+        """獲取當前資料庫 schema 版本"""
+        cursor.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='schema_version'
+        """)
+        if cursor.fetchone() is None:
+            return 0  # 無版本表，視為版本 0
+
+        cursor.execute("SELECT version FROM schema_version LIMIT 1")
+        row = cursor.fetchone()
+        return row[0] if row else 0
+
+    def _set_schema_version(self, cursor: sqlite3.Cursor, version: int):
+        """設置資料庫 schema 版本"""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS schema_version (
+                version INTEGER PRIMARY KEY
+            )
+        """)
+        cursor.execute("DELETE FROM schema_version")
+        cursor.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
+
+    def _backup_database(self) -> str:
+        """備份資料庫，返回備份檔案路徑"""
+        if not os.path.exists(self.db_path):
+            return ""
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"{self.db_path}.backup_{timestamp}"
+        shutil.copy2(self.db_path, backup_path)
+
+        if config.DEBUG:
+            print(f"[DB] 資料庫已備份至: {backup_path}")
+
+        return backup_path
+
     def init_database(self):
-        """初始化 SQLite 數據庫（破壞性升級：加入 location_id, tier, current_tick）"""
+        """初始化 SQLite 數據庫（帶版本控制和備份）"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # 檢查是否需要遷移（如果舊表存在但沒有 location_id 欄位）
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='players'")
-        table_exists = cursor.fetchone() is not None
+        current_version = self._get_schema_version(cursor)
 
-        if table_exists:
-            # 檢查是否已有新欄位
-            cursor.execute("PRAGMA table_info(players)")
-            columns = [col[1] for col in cursor.fetchall()]
+        if current_version < DB_SCHEMA_VERSION:
+            if current_version > 0:
+                # 有舊版本資料，先備份
+                conn.close()
+                backup_path = self._backup_database()
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
 
-            if 'location_id' not in columns:
-                # 需要遷移：刪除舊表，創建新表
                 if config.DEBUG:
-                    print("[DB] ⚠️  偵測到舊版數據庫，進行破壞性遷移...")
-                cursor.execute("DROP TABLE IF EXISTS players")
-                cursor.execute("DROP TABLE IF EXISTS event_logs")
-                cursor.execute("DROP TABLE IF EXISTS npc_relations")
+                    print(f"[DB] 從版本 {current_version} 升級到 {DB_SCHEMA_VERSION}")
+
+            # 重建所有表（開發階段採用重建策略）
+            cursor.execute("DROP TABLE IF EXISTS players")
+            cursor.execute("DROP TABLE IF EXISTS event_logs")
+            cursor.execute("DROP TABLE IF EXISTS npc_relations")
 
         # 玩家表（新版）
         cursor.execute("""
@@ -75,11 +120,14 @@ class GameStateManager:
                 UNIQUE(player_id, npc_id)
             )
         """)
-        
+
+        # 更新 schema 版本
+        self._set_schema_version(cursor, DB_SCHEMA_VERSION)
+
         conn.commit()
         conn.close()
         if config.DEBUG:
-            print("[DB] 數據庫初始化完成")
+            print(f"[DB] 數據庫初始化完成 (schema v{DB_SCHEMA_VERSION})")
     
     def create_new_player(self, player_name: str) -> Dict[str, Any]:
         """創建新玩家"""

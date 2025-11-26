@@ -54,7 +54,7 @@ GAME_TITLE = "道·衍 - 修仙多智能體 MUD"
 # ============ 玩家初始狀態 ============
 INITIAL_PLAYER_STATE = {
     "name": None,                    # 由玩家設定
-    "tier": 1.0,                     # 練氣期初級
+    "tier": 1.0,                     # 練氣期初級（1.0-1.9 練氣，2.0-2.9 築基...）
     "hp": 100,
     "max_hp": 100,
     "mp": 50,                        # 法力值
@@ -62,12 +62,11 @@ INITIAL_PLAYER_STATE = {
     "inventory": ["布衣", "乾糧"],   # 初始物品
     "location_id": "qingyun_foot",   # ✅ 使用英文 ID
     "location": "青雲門·山腳",        # ✅ 保留中文名（顯示用）
-    "karma": 0,                      # 氣運值（影響奇遇）
+    "karma": 0,                      # 氣運值（影響突破成功率）
     "relations": {},                 # {npc_id: affinity_score}
     "skills": ["基礎劍法"],           # 技能列表
-    "cultivation_progress": 0.0,     # 當前境界進度 (0.0-100.0)
-    "experience": 0,
-    "level": 1,
+    "cultivation_progress": 0,       # 修煉進度（累積到所需值後可嘗試突破）
+    "breakthrough_attempts": 0,      # 突破嘗試次數（用於劇情）
 }
 
 # ============ 遊戲規則 ============
@@ -93,4 +92,6 @@ DEFAULT_MODEL = "gpt-4o-mini"       # 預設 AI 模型
 # ============ 調試模式 ============
 # 從環境變數讀取，預設為 False
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-VERBOSE_API_CALLS = os.getenv("VERBOSE_API_CALLS", "false").lower() == "true"
+
+# 所有開發用日誌統一由 DEBUG 控制
+VERBOSE_API_CALLS = DEBUG

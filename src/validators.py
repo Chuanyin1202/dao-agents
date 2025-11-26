@@ -445,9 +445,13 @@ def validate_npc_existence(decision: Dict[str, Any],
 
     # 檢查 npc_relations_change 中的 NPC ID
     npc_relations = decision.get('state_update', {}).get('npc_relations_change', {})
-    for npc_id in npc_relations.keys():
-        if not npc_manager.get_npc(npc_id):
-            invalid_npcs.append(npc_id)
+    if isinstance(npc_relations, dict):
+        for npc_id in npc_relations.keys():
+            if not npc_manager.get_npc(npc_id):
+                invalid_npcs.append(npc_id)
+    else:
+        # 不預期的格式，直接忽略並警告
+        print("[validator] ⚠️  npc_relations_change 應為 dict，已忽略")
 
     # 檢查 narrative 中的 NPC 提及
     narrative = decision.get('narrative', '')
