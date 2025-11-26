@@ -78,28 +78,38 @@ class WorldSettings:
         return loc
 
     def _validate_references(self):
+        """驗證資料引用完整性。DEBUG 模式下致命錯誤會 raise。"""
+        errors = []
+
         # locations id 唯一性
         if len(self.locations_by_id) != len(self.locations):
-            print("[world_loader] ⚠️  發現重複的 location id，請檢查 locations.json")
+            errors.append("發現重複的 location id，請檢查 locations.json")
 
         # npc 的 location_id 是否存在
         for npc in self.npcs:
             loc_id = npc.get("location_id")
             if loc_id and loc_id not in self.locations_by_id:
-                print(f"[world_loader] ⚠️  NPC {npc.get('id')} 的 location_id '{loc_id}' 不存在於 locations")
+                errors.append(f"NPC {npc.get('id')} 的 location_id '{loc_id}' 不存在於 locations")
 
         # events 的 location_id 是否存在
         for event in self.events:
             loc_id = event.get("location_id")
             if loc_id and loc_id not in self.locations_by_id:
-                print(f"[world_loader] ⚠️  事件池 location_id '{loc_id}' 不存在於 locations")
+                errors.append(f"事件池 location_id '{loc_id}' 不存在於 locations")
 
-        # treasures 物品是否存在
+        # treasures 物品是否存在（僅警告，不視為致命錯誤）
         item_ids = {item.get("id") or item.get("name") for item in self.items}
         for event in self.events:
             for treasure in event.get("treasures", []):
                 name = treasure.get("item_id") or treasure.get("item_name")
                 if name and name not in item_ids:
-                    # 僅警告，不阻斷
                     print(f"[world_loader] ⚠️  事件池引用未知物品 '{name}'")
+
+        # DEBUG 模式下直接報錯，否則僅警告
+        if errors:
+            if config.DEBUG:
+                raise ValueError(f"[world_loader] 設定集驗證失敗:\n" + "\n".join(f"  - {e}" for e in errors))
+            else:
+                for err in errors:
+                    print(f"[world_loader] ⚠️  {err}")
 

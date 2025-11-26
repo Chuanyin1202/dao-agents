@@ -12,7 +12,8 @@
 - exits: 可行方向 {direction: destination_id}
 - event_chance: 隨機事件觸發機率（0.0-1.0）
 - features: 特殊效果列表
-- available_npcs: 可能遇到的 NPC ID 列表
+- allowed_npcs: 可能遇到的 NPC ID 列表（白名單）
+- safe: 是否為安全區域（可選）
 """
 
 from world_loader import WorldSettings
@@ -31,7 +32,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.05,  # 5% 機率觸發事件
         "features": ["安全區域", "新手友善"],
-        "available_npcs": ["npc_001_master_qingyun"],
+        "allowed_npcs": ["npc_001_master_qingyun"],
     },
 
     # 核心區域：外門廣場
@@ -48,7 +49,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.10,  # 人多，事件機率較高
         "features": ["可以切磋", "任務板"],
-        "available_npcs": ["npc_002_elder_wang", "npc_003_disciple_li"],
+        "allowed_npcs": ["npc_002_elder_wang", "npc_003_disciple_li"],
         "safe": True,
     },
 
@@ -63,7 +64,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.02,  # 安靜的藥堂，事件少
         "features": ["可以購買丹藥", "可以學習煉丹"],
-        "available_npcs": ["npc_004_herbalist_zhang"],
+        "allowed_npcs": ["npc_004_herbalist_zhang"],
     },
 
     # 進階區域：藏經閣
@@ -77,7 +78,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.15,  # 秘籍之地，事件機率高
         "features": ["可以學習技能", "需要貢獻點", "靈氣濃郁"],
-        "available_npcs": ["npc_005_librarian"],
+        "allowed_npcs": ["npc_005_librarian"],
     },
 
     # 進階區域：內門
@@ -91,7 +92,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.08,
         "features": ["靈氣濃度 +200%", "修煉速度加成"],
-        "available_npcs": [],
+        "allowed_npcs": [],
     },
 
     # 野外區域：靈獸森林
@@ -105,7 +106,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.20,  # 野外危險，事件多
         "features": ["可能遭遇靈獸", "可以採集靈草"],
-        "available_npcs": [],
+        "allowed_npcs": [],
     },
 
     # 商業區：附近集市
@@ -120,7 +121,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.12,
         "features": ["可以交易", "物價便宜"],
-        "available_npcs": ["npc_003_merchant_fang"],
+        "allowed_npcs": ["npc_003_merchant_fang"],
     },
 
     # 核心建築：青雲峰主殿
@@ -134,7 +135,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.05,
         "features": ["安全區域", "莊嚴肅穆"],
-        "available_npcs": ["npc_001_master_qingyun"],
+        "allowed_npcs": ["npc_001_master_qingyun"],
         "safe": True,
     },
 
@@ -149,7 +150,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.15,
         "features": ["可以切磋", "修煉加成"],
-        "available_npcs": ["npc_004_disciple_red"],
+        "allowed_npcs": ["npc_004_disciple_red"],
         "safe": True,
     },
 
@@ -164,7 +165,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.20,
         "features": ["靈氣濃郁", "危險地形", "可能有奇遇"],
-        "available_npcs": ["npc_005_hermit_stone"],
+        "allowed_npcs": ["npc_005_hermit_stone"],
     },
 
     # 娛樂區域：酒肆
@@ -178,7 +179,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.18,
         "features": ["可以休息", "可以打聽消息"],
-        "available_npcs": ["npc_006_bard_luna"],
+        "allowed_npcs": ["npc_006_bard_luna"],
         "safe": True,
     },
 
@@ -194,7 +195,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.10,
         "features": ["檢查境界", "戒備森嚴"],
-        "available_npcs": ["npc_007_demon_cultivator"],
+        "allowed_npcs": ["npc_007_demon_cultivator"],
     },
 
     # 劍道聖地：劍道館
@@ -208,7 +209,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.12,
         "features": ["可以學習劍法", "劍意濃郁"],
-        "available_npcs": ["npc_008_elder_sword"],
+        "allowed_npcs": ["npc_008_elder_sword"],
         "safe": True,
     },
 
@@ -223,7 +224,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.08,
         "features": ["心境平和", "可以冥想"],
-        "available_npcs": ["npc_009_priest_compassion"],
+        "allowed_npcs": ["npc_009_priest_compassion"],
         "safe": True,
     },
 
@@ -238,7 +239,7 @@ WORLD_MAP = {
         },
         "event_chance": 0.10,
         "features": ["靈氣濃郁", "可以打坐", "恢復法力"],
-        "available_npcs": ["npc_010_love_interest"],
+        "allowed_npcs": ["npc_010_love_interest"],
         "safe": True,
     },
 }
