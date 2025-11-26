@@ -107,8 +107,8 @@
       "npcs": [],
       "random_encounters": [
         {
-          "type": "beast",
-          "beast_name": "低階靈獸",
+          "type": "npc",
+          "npc_id": "npc_011_beast_low_tier",
           "weight": 0.25,
           "tier_range": [1.0, 1.5]
         }

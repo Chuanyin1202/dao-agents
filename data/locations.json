@@ -27,7 +27,7 @@
     {
       "id": "qingyun_plaza",
       "name": "青雲門·外門廣場",
-      "description": "寬闘的練武場，外門弟子們在此切磋武藝。場中央立著一塊巨大的任務告示板。",
+      "description": "寬闊的練武場，外門弟子們在此切磋武藝。場中央立著一塊巨大的任務告示板。",
       "tier_requirement": 1.0,
       "exits": {
         "south": "qingyun_foot",
@@ -169,7 +169,7 @@
     {
       "id": "qingyun_cliff",
       "name": "青雲門·天絕崖",
-      "description": "青雲峰最高的懸崖，雲霧繚繞，視野開闘。傳聞有隱士在此修行。",
+      "description": "青雲峰最高的懸崖，雲霧繚繞，視野開闊。傳聞有隱士在此修行。",
       "tier_requirement": 2.0,
       "exits": {
         "down": "qingyun_inner"
@@ -202,7 +202,7 @@
         "morning": "稀疏的客人，陽光透過窗戶灑入",
         "afternoon": "漸漸熱鬧，修士三三兩兩聚集",
         "evening": "人聲鼎沸，酒氣瀰漫",
-        "night": "燈火通明，偶有醉漢高談闘法"
+        "night": "燈火通明，偶有醉漢高談鬥法"
       },
       "can_invent_details": true
     },

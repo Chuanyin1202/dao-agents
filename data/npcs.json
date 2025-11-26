@@ -179,6 +179,26 @@
         "player_default_affinity": 20,
         "trigger_topics": ["夢想", "未來", "感情"]
       }
+    },
+    {
+      "id": "npc_011_beast_low_tier",
+      "name": "低階靈獸",
+      "title": "野生靈獸",
+      "tier": 1.2,
+      "tier_name": "練氣期",
+      "location_id": "wildlands_forest",
+      "personality": "野性未馴，對入侵領地者充滿敵意。但若被擊敗可能臣服。",
+      "lore": "森林中最常見的靈獸，種類繁多。有時會掉落獸皮或靈草。",
+      "combat_style": "野性撲擊，速度快但招式單一。",
+      "dialogue_style": "不會說話，只會嘶吼",
+      "likes": ["肉食", "領地"],
+      "dislikes": ["入侵者", "火焰"],
+      "relations": {
+        "player_default_affinity": -30,
+        "trigger_topics": []
+      },
+      "is_beast": true,
+      "beast_drops": ["獸皮", "靈草"]
     }
   ]
 }
