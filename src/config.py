@@ -42,11 +42,13 @@ if not OPENAI_API_KEY or OPENAI_API_KEY == "sk-your-api-key-here":
         RuntimeWarning
     )
 
-# 模型配置
-MODEL_OBSERVER = "gpt-4o-mini"      # 快速意圖解析
-MODEL_LOGIC = "gpt-4o-mini"         # 規則驗證
-MODEL_DRAMA = "gpt-4o-mini"         # 劇情生成
-MODEL_DIRECTOR = "gpt-4o-mini"      # 最終決策（Phase 1 使用 mini 降低成本）
+# 模型配置（Phase 1 統一使用 mini 降低成本）
+DEFAULT_MODEL = "gpt-4o-mini"
+# 未來可按需調整各 Agent 的模型
+MODEL_OBSERVER = DEFAULT_MODEL
+MODEL_LOGIC = DEFAULT_MODEL
+MODEL_DRAMA = DEFAULT_MODEL
+MODEL_DIRECTOR = DEFAULT_MODEL
 
 # ============ 遊戲配置 ============
 GAME_TITLE = "道·衍 - 修仙多智能體 MUD"
@@ -87,7 +89,6 @@ API_TEMPERATURE = 0.8               # Drama 創意度
 # ============ 遊戲機制參數 ============
 REST_MP_RECOVERY = 20               # 休息恢復的法力值
 AUTO_SAVE_INTERVAL = 3              # 自動存檔間隔（回合數）
-DEFAULT_MODEL = "gpt-4o-mini"       # 預設 AI 模型
 
 # ============ 調試模式 ============
 # 從環境變數讀取，預設為 False

@@ -29,8 +29,8 @@ class NPCManager:
                 print(f"[NPC] 成功加載 {len(self.npcs)} 個 NPC")
         except json.JSONDecodeError as e:
             print(f"[ERROR] NPC JSON 格式錯誤: {e}")
-        except Exception as e:
-            print(f"[ERROR] NPC 加載失敗: {e}")
+        except (IOError, OSError) as e:
+            print(f"[ERROR] NPC 檔案讀取失敗: {type(e).__name__}: {e}")
     
     def get_npc(self, npc_id: str) -> Optional[Dict[str, Any]]:
         """獲取單個 NPC"""

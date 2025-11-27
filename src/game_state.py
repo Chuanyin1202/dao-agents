@@ -212,18 +212,18 @@ class GameStateManager:
             if config.DEBUG:
                 print(f"[DB] 玩家 ID {player_id} 已保存")
             return True
-        except Exception as e:
-            print(f"[ERROR] 保存失敗: {e}")
+        except (sqlite3.Error, TypeError, ValueError) as e:
+            print(f"[ERROR] 保存失敗: {type(e).__name__}: {e}")
             return False
         finally:
             conn.close()
-    
-    def log_event(self, player_id: int, location: str, event_type: str, 
+
+    def log_event(self, player_id: int, location: str, event_type: str,
                   description: str, npc_involved: Optional[str] = None) -> bool:
         """記錄遊戲事件"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute("""
                 INSERT INTO event_logs (player_id, location, event_type, description, npc_involved)
@@ -231,8 +231,8 @@ class GameStateManager:
             """, (player_id, location, event_type, description, npc_involved))
             conn.commit()
             return True
-        except Exception as e:
-            print(f"[ERROR] 事件記錄失敗: {e}")
+        except sqlite3.Error as e:
+            print(f"[ERROR] 事件記錄失敗: {type(e).__name__}: {e}")
             return False
         finally:
             conn.close()
@@ -316,12 +316,12 @@ class GameStateManager:
             
             conn.commit()
             return True
-        except Exception as e:
-            print(f"[ERROR] 親密度更新失敗: {e}")
+        except sqlite3.Error as e:
+            print(f"[ERROR] 親密度更新失敗: {type(e).__name__}: {e}")
             return False
         finally:
             conn.close()
-    
+
     def list_all_players(self) -> list:
         """列出所有玩家"""
         conn = sqlite3.connect(self.db_path)

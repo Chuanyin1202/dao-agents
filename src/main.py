@@ -303,27 +303,12 @@ class DaoGame:
         # 存檔
         self.save_game()
 
-    def get_tier_name(self, tier: float) -> str:
-        """根據 tier 值獲取境界名稱（已棄用，使用 cultivation.get_tier_display_name）"""
-        tier_int = int(tier)
-        tier_names = {
-            1: "練氣期",
-            2: "築基期",
-            3: "金丹期",
-            4: "元嬰期",
-            5: "化神期",
-            6: "煉虛期",
-            7: "合體期",
-            8: "大乘期",
-            9: "渡劫期"
-        }
-        return tier_names.get(tier_int, "未知境界")
-
     def show_thinking_tip(self):
         """顯示隨機提示（在 AI 處理期間減少等待感）"""
         import random
+        from cultivation import get_tier_display_name
 
-        tier_name = self.get_tier_name(self.player_state.get('tier', 1.0))
+        tier_name = get_tier_display_name(self.player_state.get('tier', 1.0))
 
         tips = [
             "「天道酬勤，地道酬善，人道酬誠」",

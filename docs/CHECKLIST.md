@@ -247,7 +247,7 @@ VERBOSE_API_CALLS = True  # 打印 API 調用
 
 - [ ] 所有 6 個 Python 文件存在且 > 50 行
 - [ ] 所有文件都有中文註釋
-- [ ] 沒有 `TODO` 或 `FIXME` 標記（除了 Phase 2 相關）
+- [ ] 沒有阻塞性的 `TODO` 或 `FIXME` 標記（允許 Phase 2 預留功能）
 - [ ] 所有 import 都能成功
 
 ### 數據完整性

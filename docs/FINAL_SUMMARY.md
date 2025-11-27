@@ -236,7 +236,7 @@ DM: 掌門的劍光即將落下之際...
 ### 代碼質量
 
 ```
-✅ 無任何 TODO 或 FIXME
+✅ 無阻塞性 TODO 或 FIXME（僅 Phase 2 預留功能）
 ✅ 完整錯誤處理（API 失敗、JSON 解析等）
 ✅ 調試模式完整（DEBUG + VERBOSE_API_CALLS）
 ✅ 所有變數有類型註釋
