@@ -631,7 +631,7 @@ class DaoGame:
                 decision['narrative'] = narrative
                 decision['state_update'] = state_update
 
-            validation = validator.validate(narrative, state_update, self.player_state)
+            validation = validator.validate(narrative, state_update, self.player_state, intent_type)
 
             # 顯示警告（Level 1 - 不阻止）
             if config.DEBUG and validation['warnings']:
@@ -668,15 +668,15 @@ class DaoGame:
                 narrative = decision.get('narrative', '發生了某件奇異的事情。')
                 state_update = decision.get('state_update', {})
 
-                validation = validator.validate(narrative, state_update, self.player_state)
+                validation = validator.validate(narrative, state_update, self.player_state, intent_type)
 
                 if not validation['valid']:
                     if config.DEBUG:
                         print("\n  🔧 Level 3: 自動修復...")
 
-                    state_update = auto_fix_state(narrative, state_update)
+                    state_update = auto_fix_state(narrative, state_update, intent_type)
 
-                    final_validation = validator.validate(narrative, state_update, self.player_state)
+                    final_validation = validator.validate(narrative, state_update, self.player_state, intent_type)
                     if not final_validation['valid']:
                         print("  ⚠️  自動修復後仍有錯誤（已盡力）")
                     elif config.DEBUG:
@@ -944,9 +944,7 @@ class DaoGame:
             description=narrative
         )
 
-        # 顯示新位置
-        self.print_status()
-
+        # 注意：不在這裡調用 print_status()，主迴圈會統一顯示
         return True
 
     def handle_shortcut(self, user_input: str) -> Optional[str]:

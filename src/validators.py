@@ -25,7 +25,9 @@ class ConsistencyValidator:
         self.move_keywords = ['來到', '抵達', '進入', '前往', '到達', '走進', '踏入']
         self.skill_keywords = ['學會', '領悟', '習得', '掌握', '悟出']
 
-    def validate(self, narrative: str, state_update: Dict[str, Any], player_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def validate(self, narrative: str, state_update: Dict[str, Any],
+                 player_state: Optional[Dict[str, Any]] = None,
+                 intent_type: Optional[str] = None) -> Dict[str, Any]:
         """
         執行驗證
 
@@ -33,6 +35,7 @@ class ConsistencyValidator:
             narrative: 劇情敘述
             state_update: 狀態更新字典
             player_state: 玩家當前狀態（用於數值範圍檢查）
+            intent_type: 玩家意圖類型（TALK, MOVE, ATTACK 等）
 
         Returns:
             {
@@ -46,18 +49,22 @@ class ConsistencyValidator:
 
         narrative_text = narrative if narrative else ""
 
-        # 1. 檢查物品獲得
-        gained_items = state_update.get('items_gained', [])
-        for keyword in self.gain_keywords:
-            if keyword in narrative_text:
-                # 排除否定句
-                if self._is_negative_context(narrative_text, keyword):
-                    continue
+        # 1. 檢查物品獲得（TALK 和 INSPECT 意圖跳過此檢查）
+        # 因為對話中的「獲得指導」「獲得啟發」不是實際物品
+        skip_item_check = intent_type in ['TALK', 'INSPECT']
 
-                # 如果敘述提到獲得，但列表為空 -> 嚴重錯誤
-                if not gained_items:
-                    errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 items_gained 為空")
-                    break
+        gained_items = state_update.get('items_gained', [])
+        if not skip_item_check:
+            for keyword in self.gain_keywords:
+                if keyword in narrative_text:
+                    # 排除否定句
+                    if self._is_negative_context(narrative_text, keyword):
+                        continue
+
+                    # 如果敘述提到獲得，但列表為空 -> 嚴重錯誤
+                    if not gained_items:
+                        errors.append(f"❌ 嚴重: 敘述提到「{keyword}」但 items_gained 為空")
+                        break
 
         # 反向檢查：狀態有更新，但敘述沒提 (警告即可)
         for item in gained_items:
@@ -344,32 +351,64 @@ def normalize_location_update(state_update: dict) -> dict:
     return state_update
 
 
-def auto_fix_state(narrative: str, state_update: dict) -> dict:
+def auto_fix_state(narrative: str, state_update: dict, intent_type: str = None) -> dict:
     """
     Level 3 兜底機制：使用 Regex 自動修復 state_update
 
-    修改重點：使用翻譯層統一處理 location 格式
+    修改重點：
+    - 使用翻譯層統一處理 location 格式
+    - 過濾無效物品（抽象概念、被截斷的詞）
+    - TALK/INSPECT 意圖跳過物品修復
 
     Args:
         narrative: 劇情敘述
         state_update: 原始狀態更新
+        intent_type: 玩家意圖類型（用於跳過不適用的修復）
 
     Returns:
         修復後的狀態更新
     """
-    from keyword_tables import REGEX_ITEM_GAIN, REGEX_HP_DAMAGE, REGEX_MOVEMENT
+    from keyword_tables import (
+        REGEX_ITEM_GAIN, REGEX_HP_DAMAGE, REGEX_MOVEMENT,
+        INVALID_ITEM_WORDS, INVALID_ITEM_PATTERNS
+    )
 
     fixed_update = state_update.copy()
 
+    # TALK 和 INSPECT 意圖跳過物品修復
+    # 因為「獲得指導」「獲得啟發」不是實際物品
+    skip_item_fix = intent_type in ['TALK', 'INSPECT']
+
     # 修復物品獲得
-    if '獲得' in narrative or '得到' in narrative or '賜予' in narrative:
+    if not skip_item_fix and ('獲得' in narrative or '得到' in narrative or '賜予' in narrative):
         matches = re.findall(REGEX_ITEM_GAIN, narrative)
 
         if matches and not fixed_update.get('items_gained'):
-            # 提取第二組（物品名）
-            items = list(set([match[1] for match in matches]))  # 去重
-            fixed_update['items_gained'] = items
-            print(f"  🔧 自動修復: 添加物品 {items}")
+            # 提取第二組（物品名）並過濾無效物品
+            raw_items = list(set([match[1] for match in matches]))  # 去重
+
+            # 過濾無效物品
+            valid_items = []
+            for item in raw_items:
+                # 檢查是否在無效詞彙列表中
+                if any(invalid_word in item for invalid_word in INVALID_ITEM_WORDS):
+                    print(f"  ⚠️  過濾無效物品（抽象概念）: '{item}'")
+                    continue
+
+                # 檢查是否匹配無效模式
+                is_invalid_pattern = False
+                for pattern in INVALID_ITEM_PATTERNS:
+                    if re.search(pattern, item):
+                        print(f"  ⚠️  過濾無效物品（模式匹配）: '{item}'")
+                        is_invalid_pattern = True
+                        break
+
+                if not is_invalid_pattern:
+                    valid_items.append(item)
+
+            if valid_items:
+                fixed_update['items_gained'] = valid_items
+                print(f"  🔧 自動修復: 添加物品 {valid_items}")
 
     # 修復 HP 扣減（只在有明確數值時修復）
     if ('受傷' in narrative or '疼痛' in narrative or '吐血' in narrative or '重傷' in narrative or '失去' in narrative) and fixed_update.get('hp_change', 0) >= 0:

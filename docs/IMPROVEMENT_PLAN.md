@@ -647,6 +647,108 @@ def migrate_location(old_location: str) -> str:
 
 ---
 
-**最後更新**：2025-01-22
+## 🧠 Phase 4: 記憶系統升級（基於 Generative Agents 研究）
+
+> 詳細研究筆記請參考：[RESEARCH_REFERENCE.md](./RESEARCH_REFERENCE.md)
+
+### 研究來源
+
+- **論文**：Generative Agents: Interactive Simulacra of Human Behavior (Stanford, UIST '23)
+- **GitHub**：joonspk-research/generative_agents, StanfordHCI/genagents
+
+### 當前問題
+
+dao-agents 的記憶系統過於簡單：
+- `recent_events[-10:]` 只取最近 10 條
+- 無法區分重要事件和瑣事
+- NPC 無法形成對玩家的「印象」
+- 重大事件（如突破成功）會被新事件沖掉
+
+### 改進方案
+
+#### 4.1 記憶重要性評分
+
+```python
+# 為每個事件添加 importance 評分 (1-10)
+@dataclass
+class MemoryNode:
+    id: str
+    description: str
+    importance: int          # 1-10
+    tick_created: int
+    event_type: str          # action / cultivation / combat / dialogue
+    related_npcs: List[str]
+```
+
+**重要性評分標準（修仙適配）**：
+| 分數 | 事件類型 |
+|------|---------|
+| 1-2 | 移動、休息、查看背包 |
+| 3-4 | 普通對話、獲得普通物品 |
+| 5-6 | 學習技能、遭遇事件 |
+| 7-8 | 突破境界、重大戰鬥 |
+| 9-10 | 獲得神器、渡劫、飛升 |
+
+#### 4.2 三維記憶檢索
+
+```python
+def retrieve_memories(
+    memories: List[MemoryNode],
+    query: str,
+    current_tick: int,
+    weights: Tuple[float, float, float] = (1.0, 1.0, 0.5)
+) -> List[MemoryNode]:
+    """
+    檢索公式：score = recency × importance × relevance
+    """
+    recency_w, importance_w, relevance_w = weights
+
+    for mem in memories:
+        recency = 0.995 ** ((current_tick - mem.tick_created) / 10)
+        importance = mem.importance / 10
+        relevance = keyword_match(query, mem.description)  # 簡化版
+
+        score = recency_w * recency + importance_w * importance + relevance_w * relevance
+```
+
+#### 4.3 NPC 反思機制
+
+讓 NPC 定期（每 100 tick）對玩家形成「印象」：
+
+```python
+# NPC 反思 Prompt
+"""
+基於以下觀察，總結你對這位修士的看法：
+1. {observation_1}
+2. {observation_2}
+...
+
+請用一句話描述你對此人的印象：
+"""
+
+# 反思結果範例
+"此人多次出手相助弱者，行事光明磊落，似有正道風範。"
+```
+
+### 實施優先級
+
+| 優先級 | 任務 | 預估時間 |
+|--------|------|---------|
+| 高 | 為 event_log 添加 importance 欄位 | 1 小時 |
+| 高 | 實現加權記憶檢索 | 2 小時 |
+| 中 | NPC 反思機制 | 3 小時 |
+| 低 | Embedding 向量檢索 | 需要額外基礎設施 |
+
+---
+
+## 📚 參考文檔
+
+- [RESEARCH_REFERENCE.md](./RESEARCH_REFERENCE.md) - Generative Agents 研究筆記
+- [ARCHITECTURE_ANALYSIS.md](./ARCHITECTURE_ANALYSIS.md) - 系統架構分析
+- [world_setting.md](./world_setting.md) - 世界觀設定
+
+---
+
+**最後更新**：2025-12-01
 **狀態**：待實施
-**預計完成**：Phase 1 (2 小時) | Phase 2 (1 小時) | Phase 3 (2-3 天)
+**預計完成**：Phase 1 (2 小時) | Phase 2 (1 小時) | Phase 3 (2-3 天) | Phase 4 (6 小時)

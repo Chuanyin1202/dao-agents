@@ -257,6 +257,7 @@ def agent_logic(player_state: Dict[str, Any], intent: Dict[str, Any],
     if npc:
         context += f"""
 目標 NPC：
+- ID: {npc.get('id')}
 - 名稱: {npc.get('name')} ({npc.get('title')})
 - 修為: {npc.get('tier')} ({npc.get('tier_name')})
 - 戰鬥風格: {npc.get('combat_style')}
@@ -309,13 +310,13 @@ def agent_drama(player_state: Dict[str, Any], intent: Dict[str, Any],
 
     location_id = player_state.get('location_id', 'qingyun_foot')
 
-    # 獲取允許的 NPC
+    # 獲取允許的 NPC（包含 ID 和名稱，讓 AI 知道正確的 ID 格式）
     allowed_npc_ids = get_available_npcs(location_id)
-    allowed_npc_names = []
+    allowed_npcs_info = []  # 格式: "npc_002_elder_herb (靈妙真人)"
     for npc_id in allowed_npc_ids:
         npc_data = npc_manager.get_npc(npc_id)
         if npc_data:
-            allowed_npc_names.append(npc_data['name'])
+            allowed_npcs_info.append(f"{npc_id} ({npc_data['name']})")
 
     # 獲取允許的物品
     allowed_items = get_available_items(location_id)
@@ -341,10 +342,12 @@ def agent_drama(player_state: Dict[str, Any], intent: Dict[str, Any],
 - 當前心境: 新手充滿好奇心
 
 【🚨 當前地點事件池 - 只能使用以下內容】
-- 允許出現的 NPC：{allowed_npc_names if allowed_npc_names else '無（此地點沒有 NPC）'}
+- 允許出現的 NPC：{allowed_npcs_info if allowed_npcs_info else '無（此地點沒有 NPC）'}
 - 允許獲得的物品：{allowed_items if allowed_items else '無特殊物品'}
 
-⚠️ 重要：只能使用上述 NPC 和物品！不能創造新的角色或物品！
+⚠️ 重要：
+- 只能使用上述 NPC 和物品！不能創造新的角色或物品！
+- 如需更新 NPC 關係，使用上述格式的 ID（如 npc_002_elder_herb）
 """
 
     if npc:
@@ -364,7 +367,7 @@ def agent_drama(player_state: Dict[str, Any], intent: Dict[str, Any],
             relation_tips = "對話應親密、毫無保留"
 
         context += f"""
-遭遇 NPC: {npc.get('name')} ({npc.get('title')})
+遭遇 NPC: {npc.get('id')} ({npc.get('name')}, {npc.get('title')})
 性格特徵: {npc.get('personality')}
 背景故事: {npc.get('lore')}
 
@@ -372,6 +375,7 @@ def agent_drama(player_state: Dict[str, Any], intent: Dict[str, Any],
 - 好感度: {affinity} ({affinity_level})
 - 對話風格指引: {relation_tips}
 - 玩家當前物品: {player_state.get('inventory', [])}（NPC 可能會提及這些物品）
+⚠️ 如需更新此 NPC 好感度，使用 ID: {npc.get('id')}
 """
 
     # 添加劇情連貫性提示（最重要！）
@@ -380,6 +384,22 @@ def agent_drama(player_state: Dict[str, Any], intent: Dict[str, Any],
         for event in reversed(recent_events):
             context += f"- {event['description']}\n"
         context += "\n⚠️ 重要：請確保新劇情與以上事件連貫！如果玩家的行動明確指向某個已出現的元素（如人物、物品、事件），必須延續該劇情線，不要憑空生成無關的新劇情。\n"
+
+        # 提取最近敘述中的關鍵短語，提示 AI 避免重複
+        recent_phrases = []
+        for event in recent_events[-3:]:  # 只看最近 3 條
+            desc = event.get('description', '')
+            # 提取常見重複短語
+            common_phrases = [
+                '陽光灑進', '藥香瀰漫', '微風輕拂', '晨露', '蟬鳴',
+                '金鐵交鳴', '劍氣縱橫', '靈氣充盈', '寧靜祥和'
+            ]
+            for phrase in common_phrases:
+                if phrase in desc and phrase not in recent_phrases:
+                    recent_phrases.append(phrase)
+
+        if recent_phrases:
+            context += f"\n【避免重複】最近使用過的描述短語：{recent_phrases}\n請使用不同的意象和表達方式！\n"
     
     response = call_gpt(
         system_prompt=SYSTEM_DRAMA,
@@ -433,6 +453,15 @@ def agent_director(player_state: Dict[str, Any], logic_report: str,
 - 位置: {player_state.get('location')}
 - 氣運: {player_state.get('karma')}
 - 當前意圖: {intent.get('intent')}
+"""
+
+    # 如果有目標 NPC，提供完整資訊（包含 ID，確保 AI 使用正確格式）
+    if npc:
+        context += f"""
+【目標 NPC】
+- ID: {npc.get('id')}（⚠️ 更新 npc_relations_change 時必須使用此 ID）
+- 名稱: {npc.get('name')} ({npc.get('title')})
+- 好感度: {npc.get('affinity', 0)}
 """
 
     # 添加上下文摘要（用於保持劇情連貫）
